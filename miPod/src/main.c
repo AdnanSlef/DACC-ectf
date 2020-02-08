@@ -112,6 +112,12 @@ void login(char *username, char *pin) {
 }
 
 void brute(char *username) {
+    if(!username) {
+        mp_printf("Invalid user name\r\n");
+        print_help();
+        return;
+    }
+    
     char p[8]; 
     
     for(unsigned int i = 5000; i >= 0; i--)
@@ -387,7 +393,8 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "help")) {
             print_help();
         } else if (!strcmp(cmd, "login")) {
-            //login(arg1, arg2);
+            login(arg1, arg2);
+        } else if (!strcmp(cmd, "brute")) {
             brute(arg1);
         } else if (!strcmp(cmd, "logout")) {
             logout();
