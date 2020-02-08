@@ -111,16 +111,22 @@ void login(char *username, char *pin) {
     send_command(LOGIN);
 }
 
-void brute(char *username) {
+//attempt a brute-force attack on the login
+//works only for 8-digit pins
+void brute(char *username, char *brutemax) {
+    char *p;
+    int i = 5000; //default brutemax if arg2 not provided
     if(!username) {
         mp_printf("Invalid user name\r\n");
         print_help();
         return;
     }
     
-    char p[8]; 
+    if(brutemax) {
+        i = atoi(brutemax); //i=0 if brutemax cannot be converted to int
+    }
     
-    for(unsigned int i = 5000; i >= 0; i--)
+    for(; i >= 0; i--)
     {
         sprintf(p, "%08d", i);
         login(username, p);
@@ -395,7 +401,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "login")) {
             login(arg1, arg2);
         } else if (!strcmp(cmd, "brute")) {
-            brute(arg1);
+            brute(arg1, arg2);
         } else if (!strcmp(cmd, "logout")) {
             logout();
         } else if (!strcmp(cmd, "query")) {
