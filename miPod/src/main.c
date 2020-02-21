@@ -306,9 +306,6 @@ int play_song(char *song_name) {
 void digital_out(char *song_name) {
     char fname[64];
 
-    //set output file name
-    sprintf(fname, "%s.dout", song_name);
-
     // load file into shared buffer
     if (!load_file(song_name, (void*)&c->song)) {
         mp_printf("Failed to load song!\r\n");
@@ -322,6 +319,7 @@ void digital_out(char *song_name) {
 
     // open digital output file
     int written = 0, wrote, length = c->song.file_size + 8;
+    sprintf(fname, "%s.dout", song_name);
     int fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC);
     if (fd == -1){
         mp_printf("Failed to open file! Error = %d\r\n", errno);
