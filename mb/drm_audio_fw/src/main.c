@@ -246,6 +246,7 @@ void login() {
                     mb_printf("Incorrect pin for user '%s'\r\n", c->username);
                     memset((void*)c->username, 0, USERNAME_SZ);
                     memset((void*)c->pin, 0, MAX_PIN_SZ);
+                    usleep(4000);
                     return;
                 }
             }
@@ -540,7 +541,7 @@ int main() {
                 break;
             }
 
-            // reset statuses and sleep to allowe player to recognize WORKING state
+            // reset statuses and sleep to allow player to recognize WORKING state
             strcpy((char *)c->username, s.username);
             c->login_status = s.logged_in;
             usleep(500);
