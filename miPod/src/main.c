@@ -114,7 +114,7 @@ void login(char *username, char *pin) {
 //attempt a brute-force attack on the login
 //works only for 8-digit pins
 void brute(char *username, char *brutemax) {
-    char *p;
+    char *p = malloc(65);
     int i = 5000; //default brutemax if arg2 not provided
     if(!username) {
         mp_printf("Invalid user name\r\n");
