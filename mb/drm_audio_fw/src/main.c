@@ -242,11 +242,12 @@ void login() {
                     mb_printf("Logged in for user '%s'\r\n", c->username);
                     return;
                 } else {
+                    //delay to prevent brute force
+                    for(int i=0; i<=1000000000; i++);
                     // reject login attempt
                     mb_printf("Incorrect pin for user '%s'\r\n", c->username);
                     memset((void*)c->username, 0, USERNAME_SZ);
                     memset((void*)c->pin, 0, MAX_PIN_SZ);
-                    usleep(4000);
                     return;
                 }
             }
