@@ -5,6 +5,7 @@ Use: Once per user
 """
 
 import json
+import secrets
 from argparse import ArgumentParser
 
 
@@ -25,6 +26,7 @@ def main(user_list, outfile):
         raise Exception(
             "Unable to parse user name and pin. Please make sure you entered the user-list as "
             "space seperated pairs of usernames and pins. Example: --user-list user1:12345678 user2:12345689")
+    rand_token_bytes = secrets.token_bytes(128)
     info = json.dumps(user_dict)
     secrets.write(info)
     secrets.close()
