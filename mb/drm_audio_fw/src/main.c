@@ -242,10 +242,19 @@ void login() {
                     mb_printf("Logged in for user '%s'\r\n", c->username);
                     return;
                 } else {
-                    //delay to prevent brute force
-                    for(int i=0; i<=1000000000; i++);
+                    //print error messages
+                    mb_printf("Incorrect pin for user '%s'\r\n",c->username);
+                    mb_printf("Please do not attempt hacking.\r\n");
+                    mb_printf("Wait 4 seconds before next login attempt.\r\n");
+                    
+                    //delay about 3.6 seconds to prevent brute force
+                    for(int i=0;i<1000000;i++) {
+                        if(i%(1000000/4)==0) {
+                            //nop
+                        }
+                    }
+                    
                     // reject login attempt
-                    mb_printf("Incorrect pin for user '%s'\r\n", c->username);
                     memset((void*)c->username, 0, USERNAME_SZ);
                     memset((void*)c->pin, 0, MAX_PIN_SZ);
                     return;
@@ -254,7 +263,7 @@ void login() {
         }
 
         // reject login attempt
-        mb_printf("User not found\r\n");
+        mb_printf("User not found or attack detected
         memset((void*)c->username, 0, USERNAME_SZ);
         memset((void*)c->pin, 0, MAX_PIN_SZ);
     }
