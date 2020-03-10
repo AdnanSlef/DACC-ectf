@@ -263,7 +263,7 @@ void login() {
         }
 
         // reject login attempt
-        mb_printf("User not found or attack detected
+        mb_printf("User not found or attack detected\r\n");
         memset((void*)c->username, 0, USERNAME_SZ);
         memset((void*)c->pin, 0, MAX_PIN_SZ);
     }
