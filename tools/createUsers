@@ -8,6 +8,13 @@ import json
 import secrets
 from argparse import ArgumentParser
 
+KEYSIZE = 256
+
+def gen_keys():
+    key1a = secrets.token_hex(KEYSIZE / 2)
+    key2a = secrets.token_hex(KEYSIZE / 2)
+    key3a = secrets.token_hex(KEYSIZE / 2)
+    return {'key1a':key1a,'key2a':key2a,'key3a':key3a}
 
 def main(user_list, outfile):
     """writes user secrets to json file
@@ -26,8 +33,8 @@ def main(user_list, outfile):
         raise Exception(
             "Unable to parse user name and pin. Please make sure you entered the user-list as "
             "space seperated pairs of usernames and pins. Example: --user-list user1:12345678 user2:12345689")
-    rand_token_bytes = secrets.token_bytes(128)
-    info = json.dumps(user_dict)
+    keys_a = gen_keys()
+    info = json.dumps({'keys_a':keys_a,'user_dict':user_dict})
     secrets.write(info)
     secrets.close()
 
