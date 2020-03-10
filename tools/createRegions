@@ -24,7 +24,8 @@ def main(region_dict, file_name):
         print("Unable to open secrets file: %s" % (e,))
         return 0
     keys_b = gen_keys()
-    json.dump({'keys_b':keys_b,'region_dict':region_dict})
+    info = json.dumps({'keys_b':keys_b,'region_dict':region_dict})
+    secrets.write(info)
     secrets.close()
 
 
