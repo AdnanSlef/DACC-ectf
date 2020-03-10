@@ -3,31 +3,34 @@
 Description: Generates system wide secrets containing all potential regions
 Use: Once per ecosystem of devices
 """
+
 import json
 import secrets
 from argparse import ArgumentParser
 
-
 KEYSIZE = 256
 
 def gen_keys():
-    key1b = secrets.token_hex(KEYSIZE / 2)
-    key2b = secrets.token_hex(KEYSIZE / 2)
-    key3b = secrets.token_hex(KEYSIZE / 2)
+    key1b = secrets.token_hex(KEYSIZE // 2)
+    key2b = secrets.token_hex(KEYSIZE // 2)
+    key3b = secrets.token_hex(KEYSIZE // 2)
     return {'key1b':key1b,'key2b':key2b,'key3b':key3b}
 
-
-def main(region_dict, file_name):
+def main(region_dict, outfile):
+    """writes region secrets to json file
+    args:
+        region_dict (dict): dict of region:rid pairs
+        outfile (string): name of file to write region_secrets to
+    """
     try:
-        secrets = open(file_name, "w")
+        region_secrets = open(outfile, "w")
     except Exception as e:
         print("Unable to open secrets file: %s" % (e,))
         return 0
     keys_b = gen_keys()
     info = json.dumps({'keys_b':keys_b,'region_dict':region_dict})
-    secrets.write(info)
-    secrets.close()
-
+    region_secrets.write(info)
+    region_secrets.close()
 
 def get_args():
     """gets arguments from command line"""
@@ -38,9 +41,8 @@ def get_args():
     args = parser.parse_args()
     return args.region_list, args.outfile
 
-
 if __name__ == '__main__':
-    region_list, outfile = get_args()
-    print("generating system specific secrets")
+    region_list, loc = get_args()
+    print("generating region secrets")
     regions = {region: num for num, region in enumerate(region_list)}  # Create region IDs based on increasing integers
-    main(regions, outfile)
+    main(regions, loc)
