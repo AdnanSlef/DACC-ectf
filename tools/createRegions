@@ -8,14 +8,23 @@ import secrets
 from argparse import ArgumentParser
 
 
+KEYSIZE = 256
+
+def gen_keys():
+    key1b = secrets.token_hex(KEYSIZE / 2)
+    key2b = secrets.token_hex(KEYSIZE / 2)
+    key3b = secrets.token_hex(KEYSIZE / 2)
+    return {'key1b':key1b,'key2b':key2b,'key3b':key3b}
+
+
 def main(region_dict, file_name):
     try:
         secrets = open(file_name, "w")
     except Exception as e:
         print("Unable to open secrets file: %s" % (e,))
         return 0
-    rand_token_bytes = secrets.token_bytes(128)
-    json.dump(region_dict, secrets)
+    keys_b = gen_keys()
+    json.dump({'keys_b':keys_b,'region_dict':region_dict})
     secrets.close()
 
 
