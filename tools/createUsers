@@ -19,10 +19,10 @@ def gen_keys():
 def main(user_list, outfile):
     """writes user secrets to json file
     args:
-        users_ (string): string of users and pins seperated by colons e.g. user1:123456789
+        user_list (string): string of users and pins seperated by colons e.g. user1:123456789
         outfile (string): name of file to write user_secrets to """
     try:
-        secrets = open(outfile, "w")
+        user_secrets = open(outfile, "w")
     except Exception as e:
         print("Unable to open secrets file: %s" % (e,))
         return 0
@@ -35,8 +35,8 @@ def main(user_list, outfile):
             "space seperated pairs of usernames and pins. Example: --user-list user1:12345678 user2:12345689")
     keys_a = gen_keys()
     info = json.dumps({'keys_a':keys_a,'user_dict':user_dict})
-    secrets.write(info)
-    secrets.close()
+    user_secrets.write(info)
+    user_secrets.close()
 
 
 def get_args():
