@@ -55,7 +55,10 @@ void myISR(void) {
     InterruptProcessed = TRUE;
 }
 
+
 ///////////////////////// B-Con Crypto ////////////////////////////
+
+
 /****************************** MACROS ******************************/
 #define ROTLEFT(a,b) (((a) << (b)) | ((a) >> (32-(b))))
 #define ROTRIGHT(a,b) (((a) >> (b)) | ((a) << (32-(b))))
@@ -242,6 +245,8 @@ int sha256_test()
 
 	return(pass);
 }
+
+
 //////////////////////// UTILITY FUNCTIONS ////////////////////////
 
 
