@@ -259,7 +259,7 @@ int sha256_test()
 /*********************** FUNCTION DEFINITIONS ***********************/
 void Words64ToBytes(u64 words[],u8 bytes[],int numwords) {
   int i,j=0;
-  for(i=0;i<numwords;i++){
+  for(i=0;i<numwords;i++) {
     bytes[j]=(u8)words[i];
     bytes[j+1]=(u8)(words[i]>>8);
     bytes[j+2]=(u8)(words[i]>>16);
@@ -274,12 +274,37 @@ void Words64ToBytes(u64 words[],u8 bytes[],int numwords) {
 
 void BytesToWords64(u8 bytes[],u64 words[],int numbytes) {
   int i,j=0;
-  for(i=0;i<numbytes/8;i++){
+  for(i=0;i<numbytes/8;i++) {
     words[i]=(u64)bytes[j] | ((u64)bytes[j+1]<<8) | ((u64)bytes[j+2]<<16) | ((u64)bytes[j+3]<<24) | ((u64)bytes[j+4]<<32) | ((u64)bytes[j+5]<<40) | ((u64)bytes[j+6]<<48) | ((u64)bytes[j+7]<<56);
     j+=8;
   }
 }
 
+void Speck128256KeySchedule(u64 K[],u64 rk[]) {
+  u64 i,D=K[3],C=K[2],B=K[1],A=K[0];
+  for(i=0;i<33;) {
+    rk[i]=A; ER64(B,A,i++);
+    rk[i]=A; ER64(C,A,i++);
+    rk[i]=A; ER64(D,A,i++);
+  }
+  rk[i]=A;
+}
+
+void Speck128256Encrypt(u64 Pt[],u64 Ct[],u64 rk[]) {
+  u64 i;
+  Ct[0]=Pt[0]; Ct[1]=Pt[1];
+  for(i=0;i<34;) ER64(Ct[1],Ct[0],rk[i++]);
+}
+
+void Speck128256Decrypt(u64 Pt[],u64 Ct[],u64 rk[]) {
+  int i;
+  Pt[0]=Ct[0]; Pt[1]=Ct[1];
+  for(i=33;i>=0;) DR64(Pt[1],Pt[0],rk[i--]);
+}
+
+int speck_test() {
+	return FALSE;
+}
 
 //////////////////////// UTILITY FUNCTIONS ////////////////////////
 
