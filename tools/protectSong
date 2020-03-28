@@ -84,7 +84,7 @@ def create_metadata(regions, user, region_secrets, user_secrets):
 
 def make_keys(keys_a, keys_b):
     """Combines key halves into whole keys"""
-    keys = [keys_a[i]+keys_b[i]for i in xrange(len(keys_a))]
+    keys = [keys_a[i]+keys_b[i]for i in range(len(keys_a))]
     return keys
 
 
