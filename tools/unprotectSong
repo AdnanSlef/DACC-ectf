@@ -8,7 +8,8 @@ import struct
 import os
 import wave
 from argparse import ArgumentParser
-import numpy as np 
+import numpy as np
+from crypto import *  #crypto.py
 
 def make_keys(keys_a, keys_b):
     """Combines key halves into whole keys"""
