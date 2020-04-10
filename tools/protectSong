@@ -12,55 +12,30 @@ import numpy as np
 from crypto import *  #crypto.py
 
 
-class ProtectedSong(object):
-    """Example song object for protected song"""
+def protect(infile, outfile, md, key1, key2, key3):
+    cipher = Cipher(int(key1,16))
+    
+    with open(os.path.abspath(args.infile),'rb') as song:
+        plaintext = song.read()
+        
+    ciphertext = cipher.encrypt(plaintext)
+    extra = bytes([len(plaintext)%16])
+    iv = cipher.iv.to_bytes(16,'big')
+    mac_c = sha(sha(ciphertext)+int(key2,16).to_bytes(32,'big'))
+    mac_md = sha(sha(md+extra+iv)+int(key3,16).to_bytes(32,'big'))
 
-    def __init__(self, path_to_song, metadata):
-        """initialize values
-        Args:
-            path_to_song (string): file name where the song to be provisioned is stored
-            metadata (bytearray): bytes containing metadata information
-        """
-        self.song = path_to_song
-        self.full_song, self.original_song = self.read_song(path_to_song)
-        self.metadata = metadata
-
-    def save_secured_song_to_wave(self, file_location):
-        """Saves secured song to wave file assuming all the same characteristics as original song
-        Args:
-            file_location (string): location to store the file including name"""
-        protected_wav = wave.open(os.path.abspath(file_location), 'wb')
-        protected_wav.setnchannels(self.original_song.getnchannels())
-        protected_wav.setsampwidth(self.original_song.getsampwidth())
-        protected_wav.setframerate(self.original_song.getframerate())
-        protected_wav.writeframes(self.metadata)
-
-        for val in self.full_song:
-            protected_wav_val = struct.pack('<h', val)
-            protected_wav.writeframesraw(protected_wav_val)
-
-        protected_wav.close()
-
-    def read_song(self, path, metadata_frames=0):
-        """Reads a wave file
-        Args:
-            path (string): path to song
-            metadata_frames (int): if not 0 disregard this number of frames as metadata
-        Returns:
-            vals (array): integer array of decoded values
-            song (Wave Object): wave object associated with entered song
-        """
-        song = wave.open(os.path.abspath(path), 'r')
-        if metadata_frames:
-            song.readframes(metadata_frames)  # skip the metadata frames when assigning vals
-        vals = np.frombuffer(song.readframes(song.getnframes()), dtype=np.int16)
-        song.close()
-        return vals, song
+    with open(os.path.abspath(args.outfile),'wb') as drm:
+        drm.write(mac_md)
+        drm.write(md)
+        drm.write(extra)
+        drm.write(iv)
+        drm.write(mac_c)
+        drm.write(ciphertext)
 
 
 def create_metadata(regions, user, region_secrets, user_secrets):
     """Returns a byte string formatted as follows:
-    METADATA_LENGTH(1B)/ownerID(1B)/REGION_LEN(1B)/USER_LEN(1B)/REGIONID1(1B)/REGIONID2 (1B)/.../opt. parity
+    ownerID(1B)/REGION_LEN(1B)/USER_LEN(1B)/REGIONID1(1B)/REGIONID2 (1B)/.../NULL (63s)
     Args:
         regions (list): list of regions to provision song for
         user (string): user name for owner of the song
@@ -70,17 +45,13 @@ def create_metadata(regions, user, region_secrets, user_secrets):
         metadata (bytes): bytes of encoded metadata
     Example:
         >>create_metadata(['USA', 'Canada'], 'user1', {'USA': 1, 'Canada': 2}, {'user1': {'pin': '12345678', 'id': 0}})
-        'x06/x00/x01/x00/x01/x02'
+        b'\x00\x02\x00\x01\x02'+b'\x00'*(64-2+63)
     """
-    # note: metadata must be an even length since each sample is 2B long
-    # and ARM processors require memory accesses to be aligned to the type size
-    metadata = struct.pack(
-        '=3B{regions_length}s{regions_len_2}s'.format(regions_length=len(regions), regions_len_2=len(regions) % 2),
+    return struct.pack(
+        '=3B64s63s',
         int(user_secrets[user]['id']), len(regions), 0,
         bytes([region_secrets[str(r)] for r in regions]),
-        b'\x00' if len(regions) % 2 else b'')
-
-    return bytes([len(metadata) + 1]) + metadata
+        b'')
 
 
 def make_keys(keys_a, keys_b):
@@ -104,17 +75,17 @@ def main():
     
     region_secrets = regions_json['region_dict']
     user_secrets = users_json['user_dict']
-    
-    keys_a = users_json['keys_a']
-    keys_b = regions_json['keys_b']
-    key1, key2, key3 = make_keys(keys_a, keys_b)
 
     try:
         metadata = create_metadata(args.region_list, args.owner, region_secrets, user_secrets)
     except ValueError:
         raise ValueError('Ensure all user IDs are integers and all regions are in the provided region.secrets')
-    protected_song = ProtectedSong(args.infile, metadata)
-    protected_song.save_secured_song_to_wave(args.outfile)
+
+    keys_a = users_json['keys_a']
+    keys_b = regions_json['keys_b']
+    key1, key2, key3 = make_keys(keys_a, keys_b)
+    
+    protect(args.infile, args.outfile, metadata, key1, key2, key3)
 
 
 if __name__ == '__main__':
