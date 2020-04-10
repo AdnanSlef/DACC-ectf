@@ -11,11 +11,21 @@ from argparse import ArgumentParser
 import numpy as np
 from crypto import *  #crypto.py
 
-def make_keys(keys_a, keys_b):
-    """Combines key halves into whole keys"""
-    keys = [keys_a['key'+str(i+1)+'a']+keys_b['key'+str(i+1)+'b']for i in range(len(keys_a))]
-    return keys
 
+def unprotect(infile, outfile, key1):
+    with open(infile,'rb') as protected:
+        contents = protected.read()
+    
+    extra = contents[162]
+    iv = contents[163:179]
+    ciphertext = contents[211:]
+    
+    cipher = Cipher(int(key1,16),int.from_bytes(iv,'big'))
+
+    with open(outfile,'wb') as unprotected:
+        unprotected.write(cipher.decrypt(ciphertext,extra))
+
+        
 def main():
     parser = ArgumentParser(description='program to unprotect songs')
     parser.add_argument('--region-secrets-path', help='File location for the region secrets file', required=True)
@@ -27,12 +37,12 @@ def main():
     regions_json = json.load(open(os.path.abspath(args.region_secrets_path)))
     users_json = json.load(open(os.path.abspath(args.user_secrets_path)))
     
-    region_secrets = regions_json['region_dict']
-    user_secrets = users_json['user_dict']
-    
     keys_a = users_json['keys_a']
     keys_b = regions_json['keys_b']
-    key1, key2, key3 = make_keys(keys_a, keys_b)
+    key1 = keys_a['key1a']+keys_b['key1b']
+    
+    unprotect(args.infile,args.outfile,key1)
 
+    
 if __name__=='__main__':
     main()
