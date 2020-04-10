@@ -15,7 +15,7 @@ from crypto import *  #crypto.py
 def protect(infile, outfile, md, key1, key2, key3):
     cipher = Cipher(int(key1,16))
     
-    with open(os.path.abspath(args.infile),'rb') as song:
+    with open(os.path.abspath(infile),'rb') as song:
         plaintext = song.read()
         
     ciphertext = cipher.encrypt(plaintext)
@@ -24,7 +24,7 @@ def protect(infile, outfile, md, key1, key2, key3):
     mac_c = sha(sha(ciphertext)+int(key2,16).to_bytes(32,'big'))
     mac_md = sha(sha(md+extra+iv)+int(key3,16).to_bytes(32,'big'))
 
-    with open(os.path.abspath(args.outfile),'wb') as drm:
+    with open(os.path.abspath(outfile),'wb') as drm:
         drm.write(mac_md)
         drm.write(md)
         drm.write(extra)
