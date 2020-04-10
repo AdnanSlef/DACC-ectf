@@ -13,7 +13,7 @@ from crypto import *  #crypto.py
 
 
 def unprotect(infile, outfile, key1):
-    with open(infile,'rb') as protected:
+    with open(os.path.abspath(infile),'rb') as protected:
         contents = protected.read()
     
     extra = contents[162]
@@ -22,7 +22,7 @@ def unprotect(infile, outfile, key1):
     
     cipher = Cipher(int(key1,16),int.from_bytes(iv,'big'))
 
-    with open(outfile,'wb') as unprotected:
+    with open(os.path.abspath(outfile),'wb') as unprotected:
         unprotected.write(cipher.decrypt(ciphertext,extra))
 
         
