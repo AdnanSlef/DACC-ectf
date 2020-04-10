@@ -13,6 +13,7 @@ class Cipher(object):
         """initialize values
         Args:
             key (int): key to encrypt/decrypt data
+            iv (int): optional, initialization vector, defaults to random
         """
         self.key = key
         self.iv = iv
@@ -36,14 +37,11 @@ class Cipher(object):
         speck = SpeckCipher(self.key,256,128,'CTR',self.iv)
         return b''.join(speck.decrypt(int.from_bytes(c[i:i+16],'big')).to_bytes(16,'big') for i in range(0,len(c)-extra,16)) + speck.decrypt(int.from_bytes(c[len(c)-extra:],'big')).to_bytes(16,'big')[16-extra:]
 
-def sha(): #currently just an example
-    out = []
+def sha(data):
+    """hashes data
+    Args:
+        data (bytes): the data to hash
+    """
     sha2 = hashlib.sha256()
-    sha2.update(b"Hello")
-    out.append(sha2.hexdigest())
-    sha2.update(b", world!")
-    out.append(sha2.hexdigest())
-    sha2_2 = hashlib.sha256()
-    sha2_2.update(b'abc')
-    out.append(sha2_2.hexdigest())
-    return out
+    sha2.update(data)
+    return sha2.digest()
