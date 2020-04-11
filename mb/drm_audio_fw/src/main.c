@@ -810,8 +810,8 @@ int main() {
                 mb_printf("Done Playing Song\r\n");
                 break;
             case DIGITAL_OUT:
-		for(int iteratorr=0; interatorr<16; iteratorr++) {
-		    mb_printf("Speck tests: 0x%x", speck_test());
+		for(int iteratorr=0; iteratorr<16; iteratorr++) {
+		    mb_printf("Speck tests: 0x%x", speck_test(iteratorr));
 		}
                 //digital_out();
                 break;
