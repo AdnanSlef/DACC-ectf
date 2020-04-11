@@ -302,23 +302,22 @@ void Speck128256Decrypt(u64 Pt[],u64 Ct[],u64 rk[]) {
   for(i=33;i>=0;) DR64(Pt[1],Pt[0],rk[i--]);
 }
 
-int speck_test() {
+u8 speck_test(int i) {
   u8 pt[] = {0x70,0x6f,0x6f,0x6e,0x65,0x72,0x2e,0x20,0x49,0x6e,0x20,0x74,0x68,0x6f,0x73,0x65};
   u8 k[] = {0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x1a,0x1b,0x1c,0x1d,0x1e,0x1f};
   u8 ct[16];
   u64 Pt[2], K[4], rk[34], Ct[2];
   BytesToWords64(pt,Pt,16);
-  if ((Pt[0]!=(u64)0x202e72656e6f6f70) || (Pt[1]!=(u64)0x65736f6874206e49)) return 6;
+  if ((Pt[0]!=(u64)0x202e72656e6f6f70) || (Pt[1]!=(u64)0x65736f6874206e49)) return 0;
   BytesToWords64(k,K,32);
-  if ((K[0]!=(u64)0x0706050403020100) || (K[1]!=(u64)0x0f0e0d0c0b0a0908) || (K[2]!=(u64)0x1716151413121110) || (K[3]!=(u64)0x1f1e1d1c1b1a1918)) return 5;
+  if ((K[0]!=(u64)0x0706050403020100) || (K[1]!=(u64)0x0f0e0d0c0b0a0908) || (K[2]!=(u64)0x1716151413121110) || (K[3]!=(u64)0x1f1e1d1c1b1a1918)) return 0;
   Speck128256KeySchedule(K,rk);
   //check rk
   Speck128256Encrypt(Pt,Ct,rk);
   //check Pt
   //check Ct
   Words64ToBytes(Ct,ct,2);
-  //check ct
-  return 0;
+  return ct[i]; //manually check ct
 }
 
 //////////////////////// UTILITY FUNCTIONS ////////////////////////
@@ -811,7 +810,9 @@ int main() {
                 mb_printf("Done Playing Song\r\n");
                 break;
             case DIGITAL_OUT:
-		mb_printf("Speck tests: %d", speck_test());
+		for(int iteratorr=0; interatorr<16; iteratorr++) {
+		    mb_printf("Speck tests: 0x%x", speck_test());
+		}
                 //digital_out();
                 break;
             default:
