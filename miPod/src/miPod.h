@@ -44,29 +44,32 @@ typedef struct {
 
 // struct to interpret drm metadata
 typedef struct __attribute__((__packed__)) {
-    char md_size;
     char owner_id;
     char num_regions;
     char num_users;
-    char buf[];
+    char rids[MAX_REGIONS];
+    char uids[MAX_USERS];
+    char extra;
+    char iv[16];
 } drm_md;
 
-
 // struct to interpret shared buffer as a drm song file
-// packing values skip over non-relevant WAV metadata
+typedef struct __attribute__((__packed__)) {
+    char mac_md[32];
+    drm_md md;
+    char mac_c[32];
+    char ct[];
+} drm;
+
+//struct to interpret shared buffer as wav song file
+//packing values skip over non-relevant WAV metadata
 typedef struct __attribute__((__packed__)) {
     char packing1[4];
     int file_size;
     char packing2[32];
     int wav_size;
-    drm_md md;
-} song;
-
-// accessors for variable-length metadata fields
-#define get_drm_rids(d) (d.md.buf)
-#define get_drm_uids(d) (d.md.buf + d.md.num_regions)
-#define get_drm_song(d) ((char *)(&d.md) + d.md.md_size)
-
+    char buf[];
+} wav;
 
 // shared buffer values
 enum commands { QUERY_PLAYER, QUERY_SONG, LOGIN, LOGOUT, SHARE, PLAY, STOP, DIGITAL_OUT, PAUSE, RESTART, FF, RW };
@@ -82,10 +85,11 @@ typedef volatile struct __attribute__((__packed__)) {
     char username[USERNAME_SZ]; // stores logged in or attempted username
     char pin[MAX_PIN_SZ];       // stores logged in or attempted pin
 
-    // shared buffer is either a drm song or a query
+    // shared buffer is either a drm song or a wav song or a query
     union {
-        song song;
+        drm drm;
         query query;
+        wav wav;
         char buf[MAX_SONG_SZ]; // sets correct size of cmd_channel for allocation
     };
 } cmd_channel;
