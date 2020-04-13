@@ -35,7 +35,7 @@ def protect(infile, outfile, md, key1, key2, key3):
 
 def create_metadata(regions, user, region_secrets, user_secrets):
     """Returns a byte string formatted as follows:
-    ownerID(1B)/REGION_LEN(1B)/USER_LEN(1B)/REGIONID1(1B)/REGIONID2 (1B)/.../NULL (63s)
+    ownerID(1B)/REGION_LEN(1B)/USER_LEN(1B)/REGIONID1(1B)/REGIONID2 (1B)/.../NULL (64s)
     Args:
         regions (list): list of regions to provision song for
         user (string): user name for owner of the song
@@ -45,10 +45,10 @@ def create_metadata(regions, user, region_secrets, user_secrets):
         metadata (bytes): bytes of encoded metadata
     Example:
         >>create_metadata(['USA', 'Canada'], 'user1', {'USA': 1, 'Canada': 2}, {'user1': {'pin': '12345678', 'id': 0}})
-        b'\x00\x02\x00\x01\x02'+b'\x00'*(64-2+63)
+        b'\x00\x02\x00\x01\x02'+b'\x00'*(126)
     """
     return struct.pack(
-        '=3B64s63s',
+        '=3B64s64s',
         int(user_secrets[user]['id']), len(regions), 0,
         bytes([region_secrets[str(r)] for r in regions]),
         b'')
