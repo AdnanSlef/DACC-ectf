@@ -22,7 +22,7 @@ def protect(infile, outfile, md, key1, key2, key3):
     extra = bytes([len(plaintext)%16])
     iv = cipher.iv.to_bytes(16,'big')
     mac_c = sha(sha(ciphertext)+int(key2,16).to_bytes(32,'big'))
-    mac_md = sha(sha(md+extra+iv)+int(key3,16).to_bytes(32,'big'))
+    mac_md = sha(md+extra+iv+mac_c+int(key3,16).to_bytes(32,'big'))
 
     with open(os.path.abspath(outfile),'wb') as drm:
         drm.write(mac_md)
