@@ -61,7 +61,7 @@ typedef struct __attribute__((__packed__)) {
     char ct[];
 } drm;
 
-//struct to interpret shared buffer as wav song file
+//struct to interpret shared buffer as WAV song file
 //packing values skip over non-relevant WAV metadata
 typedef struct __attribute__((__packed__)) {
     char packing1[4];
