@@ -218,7 +218,7 @@ void share_song(char *song_name, char *username) {
     }
 
     // write song dump to file
-    length = MAX_SONG_SIZE + MD_SIZE;
+    length = MAX_SONG_SZ + MD_SIZE;
     mp_printf("Writing song to file '%s' (%dB)\r\n", song_name, length);
     while (written < length) {
         wrote = write(fd, (char *)&c->drm + written, length - written);
