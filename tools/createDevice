@@ -56,7 +56,7 @@ const u8 PROVISIONED_RIDS[] = {{ {", ".join(rids)} }};
 
 #define NUM_USERS {len(user_secrets)}
 const char *USERNAMES[] = {{ {", ".join(['"' + u + '"' for u in user_secrets])} }};
-const u8 USER_IDS[] = {{ {", ".join([str(u) for u in user_secrets.values()])} }};
+const u8 USER_IDS[] = {{ {", ".join([str(u['id']) for u in user_secrets.values()])} }};
 
 #define NUM_PROVISIONED_USERS {len(user_names)}
 const u8 PROVISIONED_UIDS[] = {{ {", ".join(uids)} }};
