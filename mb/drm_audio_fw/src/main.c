@@ -384,56 +384,77 @@ int username_to_uid(char *username, char *uid, int provisioned_only) {
 
 
 // loads the song metadata in the shared buffer into the local struct
-int load_song_md() { //TODO finish
-    BYTE md_buf[148];
-    BYTE mac_c[32];
-    BYTE tag_c[32];
-    BYTE mac_md[32];
-    BYTE tag_md[32];
+int load_song_md() {
+    BYTE md_buf[116];
+    int ct_len_claim;
+    BYTE mac[SHA256_BLOCK_SIZE];
+    BYTE tag_ct_len[SHA256_BLOCK_SIZE];
+    BYTE tag_c[SHA256_BLOCK_SIZE];
+    BYTE tag_md[SHA256_BLOCK_SIZE];
     SHA256_CTX ctx;
     
     //load data from command channels into local buffers
     memcpy(md_buf, (BYTE[3]){c->drm.md.owner_id, c->drm.md.num_regions, c->drm.md.num_users}, 3);
-    memcpy(md_buf+3, c->drm.md.rids, 64);
-    memcpy(tag_c, c->drm.mac_c, 32);
-    memcpy(md_buf+67, c->drm.md.uids, 64);
-    memcpy(tag_md, c->drm.mac_md, 32);
-    memcpy(md_buf+131, (BYTE[1]){c->drm.md.extra}, 1);
-    memcpy(md_buf+132, c->drm.md.iv, 16);
+    memcpy(tag_ct_len, c->drm.mac_ct_len, SHA256_BLOCK_SIZE);
+    memcpy(md_buf+3, c->drm.md.rids, MAX_REGIONS);
+    memcpy(tag_c, c->drm.mac_c, SHA256_BLOCK_SIZE);
+    memcpy(md_buf+35, c->drm.md.uids, MAX_USERS);
+    memcpy(tag_md, c->drm.mac_md, SHA256_BLOCK_SIZE);
+    memcpy(md_buf+99, (BYTE[1]){c->drm.md.extra}, 1);
+    ct_len_claim = c->drm.md.ct_len;
+    memcpy(md_buf+100, c->drm.md.iv, 16);
+    
+    //verify the authenticity of the ciphertext length
+    sha256_init(&ctx);
+    sha256_update(&ctx, (BYTE[4])&ct_len_claim, 4);
+    sha256_update(&ctx, KEY4, 32);
+    sha256_final(&ctx, mac);
+    if(memcmp(tag_ct_len, mac, SHA256_BLOCK_SIZE)) {
+        return FALSE;
+    }
+    s.song_md.ct_len = ct_len_claim;
     
     //verify the authenticity of the ciphertext and store the mac tag for use in next mac
     sha256_init(&ctx);
-    sha256_update(&ctx, c->drm.ct, ct_len);//TODO how do I figure out ct_len?
-    sha256_final(&ctx, mac_c);
-    if(memcmp(tag_c, mac_c, SHA256_BLOCK_SIZE)) {
+    sha256_update(&ctx, c->drm.ct, s.song_md.ct_len);
+    sha256_final(&ctx, mac);
+    sha256_init(&ctx);
+    sha256_update(&ctx, mac, SHA256_BLOCK_SIZE);
+    sha256_update(&ctx, KEY2, 32);
+    sha256_final(&ctx, mac);
+    if(memcmp(tag_c, mac, SHA256_BLOCK_SIZE)) {
         return FALSE;
     }
+    memcpy(s.song_id, mac, SHA256_BLOCK_SIZE);
 
     //verify the authenticity of the metadata
     sha256_init(&ctx);
-    sha256_update(&ctx, md_buf, 148);
-    sha256_update(&ctx, mac_c, 32);
+    sha256_update(&ctx, md_buf, 116);
+    sha256_update(&ctx, s.song_id, SHA256_BLOCK_SIZE);
     sha256_update(&ctx, KEY3, 32);
-    sha256_final(&ctx, mac_md);
-    if(memcmp(tag_md, mac_md, SHA256_BLOCK_SIZE)) {
+    sha256_final(&ctx, mac);
+    if(memcmp(tag_md, mac, SHA256_BLOCK_SIZE)) {
         return FALSE;
     }
     
     //load verified metadata into s
-    memcpy((void*)&s.song_md, md_buf, 148);
+    memcpy((void*)&s.song_md, md_buf, 116);
     return TRUE;
 }
 
 
 // checks if the song loaded into the shared buffer is locked for the current user
-int is_locked() {
+int is_locked() {//TODO finish, why don't mb_printf calls have \r\n
     int locked = TRUE;
 
     // check for authorized user
     if (!s.logged_in) {
         mb_printf("No user logged in");
     } else {
-        load_song_md();
+        if(!load_song_md()) {
+            mb_printf("Tampering detected. Song locked.");
+            return FALSE; //TODO does the caller need to know more than 1 bit?
+        };
 
         // check if user is authorized to play song
         if (s.uid == s.song_md.owner_id) {
@@ -605,49 +626,55 @@ void query_song() {
 
 // add a user to the song's list of users
 void share_song() {//TODO finish
-    int new_md_len, shift;
-    char new_md[256], uid;
-
+    char md_buf[116], uid;
+    
     // reject non-owner attempts to share
-    load_song_md();
+    if(!load_song_md()) {
+        mb_printf("Tampering detected. Song will not be shared\r\n");
+        c->drm.md.num_regions=99; // communicate failure
+        return
+    }
     if (!s.logged_in) {
         mb_printf("No user is logged in. Cannot share song\r\n");
-        c->wav.wav_size = 0;//TODO change how this message is communicated
+        c->drm.md.num_regions=99; // communicate failure
         return;
     } else if (s.uid != s.song_md.owner_id) {
         mb_printf("User '%s' is not song's owner. Cannot share song\r\n", s.username);
-        c->wav.wav_size = 0;
+        c->drm.md.num_regions=99; // communicate failure
         return;
     } else if (!username_to_uid((char *)c->username, &uid, TRUE)) {
         mb_printf("Username not found\r\n");
-        c->wav.wav_size = 0;
+        c->drm.md.num_regions=99; // communicate failure
         return;
+    }
+    
+    // do not re-share a song
+    for(int i=0; i<s.song_md.num_users; i++) {
+        if(s.song_md.uids[i]==uid) {
+            mb_printf("Song already shared with user\r\n");
+            c->drm.md.num_regions=99; // communicate failure
+            return;
+        }
     }
 
     // generate new song metadata
     s.song_md.uids[s.song_md.num_users++] = uid;
+    c->drm.drm_md.uids[s.song_md.num_users] = uid;
     
-    // copy the local song metadata into new_md in the correct format (TODO change to match new formt)
-    new_md[0] = ((5 + s.song_md.num_regions + s.song_md.num_users) / 2) * 2; // account for parity
-    new_md[1] = s.song_md.owner_id;
-    new_md[2] = s.song_md.num_regions;
-    new_md[3] = s.song_md.num_users;
-    memcpy(new_md + 4, s.song_md.rids, s.song_md.num_regions);
-    memcpy(new_md + 4 + s.song_md.num_regions, s.song_md.uids, s.song_md.num_users);
-    new_md_len = new_md[0]; //size of metadata (including metadata size field)
+    // load new song metadata into buffer
+    memcpy(md_buf, (BYTE[3]){s.song_md.owner_id, s.song_md.num_regions, s.song_md.num_users}, 3);
+    memcpy(md_buf+3, s.song_md.rids, MAX_REGIONS);
+    memcpy(md_buf+35, s.song_md.uids, MAX_USERS);
+    memcpy(md_buf+99, (BYTE[1]){s.song_md.extra}, 1);
+    memcpy(md_buf+100, s.song_md.iv, 16);
     
-    shift = new_md_len - s.song_md.md_size;
-
-    // shift over song and add new metadata (TODO: remove; no longer dynamic)
-    //if (shift) {
-    //    memmove((void *)get_drm_song(c->song) + shift, (void *)get_drm_song(c->song), c->song.wav_size);
-    //}
-    memcpy((void *)&c->drm.md, new_md, new_md_len);
-
-    // update file size (TODO: remove; no longer dynamic and metadata not part of WAV)
-    //c->song.file_size += shift;
-    //c->song.wav_size  += shift;
-
+    // sign new song metadata
+    sha256_init(&ctx);
+    sha256_update(&ctx, md_buf, 116);
+    sha256_update(&ctx, s.song_id, SHA256_BLOCK_SIZE);
+    sha256_update(&ctx, KEY3, 32);
+    sha256_final(&ctx, c->drm.mac_md);
+    
     mb_printf("Shared song with '%s'\r\n", c->username);
 }
 
@@ -666,7 +693,7 @@ void play_song() {//TODO finish
     mb_printf("Song length = %dB", length);
 
     // truncate song if locked
-    if (length > PREVIEW_SZ && is_locked()) {
+    if (length > PREVIEW_SZ && is_locked()) {//TODO how to preview
         length = PREVIEW_SZ;
         mb_printf("Song is locked.  Playing only %ds = %dB\r\n",
                    PREVIEW_TIME_SEC, PREVIEW_SZ);
@@ -696,7 +723,7 @@ void play_song() {//TODO finish
                 set_playing();
                 break;
             case STOP:
-                mb_printf("Stopping playback...");
+                mb_printf("Stopping playback...");//TODO why no \r\n
                 return;
             case RESTART:
                 mb_printf("Restarting song... \r\n");
