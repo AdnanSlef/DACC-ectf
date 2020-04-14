@@ -102,7 +102,7 @@ typedef volatile struct __attribute__((__packed__)) {
     union {
         drm drm;
         query query;
-	wav wav;
+    	wav wav;
     };
 } cmd_channel;
 
@@ -114,8 +114,8 @@ typedef struct {
     u8 num_users;
     u8 rids[MAX_REGIONS];
     u8 uids[MAX_USERS];
-    u8 extra; //TODO is this needed?
-    u8 iv[16]; //TODO is this needed?
+    u8 extra;
+    u8 iv[16];
 } song_md;
 
 
