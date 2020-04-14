@@ -387,6 +387,7 @@ int username_to_uid(char *username, char *uid, int provisioned_only) {
 int load_song_md() {
     BYTE md_buf[116];
     int ct_len_claim;
+    BYTE ct_len_claim_buf[4] = {0,0,0,0};
     BYTE mac[SHA256_BLOCK_SIZE];
     BYTE tag_ct_len[SHA256_BLOCK_SIZE];
     BYTE tag_c[SHA256_BLOCK_SIZE];
@@ -403,11 +404,13 @@ int load_song_md() {
     memcpy(md_buf+99, (BYTE[1]){c->drm.md.extra}, 1);
     ct_len_claim = c->drm.md.ct_len;
     memcpy(md_buf+100, c->drm.md.iv, 16);
+    memcpy(ct_len_claim_buf, &ct_len_claim, 4);//TODO test endianness
     
     //verify the authenticity of the ciphertext length
     sha256_init(&ctx);
-    sha256_update(&ctx, (BYTE[4])&ct_len_claim, 4);
+    sha256_update(&ctx, ct_len_claim_buf, 4);
     sha256_update(&ctx, KEY4, 32);
+    sha256_update(&ctx, c->drm.ct, (1<<25)); //TODO break this into a loop
     sha256_final(&ctx, mac);
     if(memcmp(tag_ct_len, mac, SHA256_BLOCK_SIZE)) {
         return FALSE;
@@ -625,14 +628,15 @@ void query_song() {
 
 
 // add a user to the song's list of users
-void share_song() {//TODO finish
+void share_song() {
     char md_buf[116], uid;
+    SHA256_CTX ctx;
     
     // reject non-owner attempts to share
     if(!load_song_md()) {
         mb_printf("Tampering detected. Song will not be shared\r\n");
         c->drm.md.num_regions=99; // communicate failure
-        return
+        return;
     }
     if (!s.logged_in) {
         mb_printf("No user is logged in. Cannot share song\r\n");
@@ -659,7 +663,7 @@ void share_song() {//TODO finish
 
     // generate new song metadata
     s.song_md.uids[s.song_md.num_users++] = uid;
-    c->drm.drm_md.uids[s.song_md.num_users] = uid;
+    c->drm.md.uids[s.song_md.num_users] = uid;
     
     // load new song metadata into buffer
     memcpy(md_buf, (BYTE[3]){s.song_md.owner_id, s.song_md.num_regions, s.song_md.num_users}, 3);
