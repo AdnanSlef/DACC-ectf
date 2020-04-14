@@ -48,7 +48,7 @@ def create_metadata(regions, user, region_secrets, user_secrets):
         b'\x00\x02\x00\x01\x02'+b'\x00'*(126)
     """
     return struct.pack(
-        '=3B64s64s',
+        '=3B32s64s',
         int(user_secrets[user]['id']), len(regions), 0,
         bytes([region_secrets[str(r)] for r in regions]),
         b'')
