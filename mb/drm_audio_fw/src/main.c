@@ -19,7 +19,6 @@
 
 //////////////////////// GLOBALS ////////////////////////
 
-
 // audio DMA access
 static XAxiDma sAxiDma;
 
@@ -46,7 +45,6 @@ internal_state s;
 
 //////////////////////// INTERRUPT HANDLING ////////////////////////
 
-
 // shared variable between main thread and interrupt processing thread
 volatile static int InterruptProcessed = FALSE;
 static XIntc InterruptController;
@@ -57,7 +55,6 @@ void myISR(void) {
 
 
 ///////////////////////// B-Con Crypto ////////////////////////////
-
 
 /****************************** MACROS ******************************/
 #define ROTLEFT(a,b) (((a) << (b)) | ((a) >> (32-(b))))
@@ -73,7 +70,7 @@ void myISR(void) {
 
 /**************************** DATA TYPES ****************************/
 typedef unsigned char BYTE;             // 8-bit byte
-typedef unsigned int  WORD;             // 32-bit word, change to "long" for 16-bit machines
+typedef unsigned int  WORD;             // 32-bit word
 
 typedef struct {
 	BYTE data[64];
@@ -211,52 +208,16 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 	}
 }
 
-int sha256_test()
-{
-	BYTE text1[] = {"abc"};
-	BYTE text2[] = {"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"};
-	BYTE text3[] = {"aaaaaaaaaa"};
-	BYTE hash1[SHA256_BLOCK_SIZE] = {0xba,0x78,0x16,0xbf,0x8f,0x01,0xcf,0xea,0x41,0x41,0x40,0xde,0x5d,0xae,0x22,0x23,
-	                                 0xb0,0x03,0x61,0xa3,0x96,0x17,0x7a,0x9c,0xb4,0x10,0xff,0x61,0xf2,0x00,0x15,0xad};
-	BYTE hash2[SHA256_BLOCK_SIZE] = {0x24,0x8d,0x6a,0x61,0xd2,0x06,0x38,0xb8,0xe5,0xc0,0x26,0x93,0x0c,0x3e,0x60,0x39,
-	                                 0xa3,0x3c,0xe4,0x59,0x64,0xff,0x21,0x67,0xf6,0xec,0xed,0xd4,0x19,0xdb,0x06,0xc1};
-	BYTE hash3[SHA256_BLOCK_SIZE] = {0xcd,0xc7,0x6e,0x5c,0x99,0x14,0xfb,0x92,0x81,0xa1,0xc7,0xe2,0x84,0xd7,0x3e,0x67,
-	                                 0xf1,0x80,0x9a,0x48,0xa4,0x97,0x20,0x0e,0x04,0x6d,0x39,0xcc,0xc7,0x11,0x2c,0xd0};
-	BYTE buf[SHA256_BLOCK_SIZE];
-	SHA256_CTX ctx;
-	int idx;
-	int pass = 1;
 
-	sha256_init(&ctx);
-	sha256_update(&ctx, text1, strlen(text1));
-	sha256_final(&ctx, buf);
-	pass = pass && !memcmp(hash1, buf, SHA256_BLOCK_SIZE);
+///////////////////////////// NSA Speck  //////////////////////////////
 
-	sha256_init(&ctx);
-	sha256_update(&ctx, text2, strlen(text2));
-	sha256_final(&ctx, buf);
-	pass = pass && !memcmp(hash2, buf, SHA256_BLOCK_SIZE);
-
-	sha256_init(&ctx);
-	for (idx = 0; idx < 100000; ++idx)
-	   sha256_update(&ctx, text3, strlen(text3));
-	sha256_final(&ctx, buf);
-	pass = pass && !memcmp(hash3, buf, SHA256_BLOCK_SIZE);
-
-	return(pass);
-}
-
-
-///////////////////////// NSA Speck  ////////////////////////////
-
-
-/****************************** MACROS ******************************/
+/****************************** MACROS *************(*****************/
 #define ROTL64(x,r) (((x)<<(r)) | (x>>(64-(r))))
 #define ROTR64(x,r) (((x)>>(r)) | ((x)<<(64-(r))))
 #define ER64(x,y,k) (x=ROTR64(x,8), x+=y, x^=k, y=ROTL64(y,3), y^=x)
 #define DR64(x,y,k) (y^=x, y=ROTR64(y,3), x^=k, x-=y, x=ROTL64(x,8))
 
-/*********************** FUNCTION DEFINITIONS ***********************/
+/*********************** FUNCTION DEFINITIONS ************************/
 void Words64ToBytes(u64 words[],u8 bytes[],int numwords) {
   int i,j=0;
   for(i=0;i<numwords;i++) {
@@ -320,8 +281,22 @@ u8 speck_test(int i) {
   return ct[i]; //manually check ct
 }
 
-//////////////////////// UTILITY FUNCTIONS ////////////////////////
+void speck_block_CTR() {//TODO finish, add params?, breaks on final block
+    u64 Pt[2], Ct[2], rk[34];
+    u8 ct[16];
+    BytesToWords64(s.song_md.iv,Pt,16);//TODO how to increment counter
+    Speck128256KeySchedule(KEY1,rk);
+    
+    //this is ECB mode of iv; make it full CTR
+    Speck128256Encrypt(Pt,Ct,rk);
+    Words64ToBytes(Ct,ct,2); //ct is now in reverse
+    //xor reverse ct with true plaintext (UP TO extra IF IT'S THE FINAL BLOCK)
+    
+    return;
+}
 
+
+//////////////////////// UTILITY FUNCTIONS ////////////////////////
 
 // returns whether an rid has been provisioned
 int is_provisioned_rid(char rid) {
@@ -395,7 +370,7 @@ int uid_to_username(char uid, char **username, int provisioned_only) {
 // looks up the uid corresponding to the username
 int username_to_uid(char *username, char *uid, int provisioned_only) {
     for (int i = 0; i < NUM_USERS; i++) {
-        if (!strcmp(username, USERNAMES[USER_IDS[i]]) &&
+        if (!strcmp(username, USERNAMES[i]) &&
             (!provisioned_only || is_provisioned_uid(USER_IDS[i]))) {
             *uid = USER_IDS[i];
             return TRUE;
@@ -409,13 +384,44 @@ int username_to_uid(char *username, char *uid, int provisioned_only) {
 
 
 // loads the song metadata in the shared buffer into the local struct
-void load_song_md() {
-    s.song_md.md_size = c->song.md.md_size;
-    s.song_md.owner_id = c->song.md.owner_id;
-    s.song_md.num_regions = c->song.md.num_regions;
-    s.song_md.num_users = c->song.md.num_users;
-    memcpy(s.song_md.rids, (void *)get_drm_rids(c->song), s.song_md.num_regions);
-    memcpy(s.song_md.uids, (void *)get_drm_uids(c->song), s.song_md.num_users);
+int load_song_md() { //TODO finish
+    BYTE md_buf[148];
+    BYTE mac_c[32];
+    BYTE tag_c[32];
+    BYTE mac_md[32];
+    BYTE tag_md[32];
+    SHA256_CTX ctx;
+    
+    //load data from command channels into local buffers
+    memcpy(md_buf, (BYTE[3]){c->drm.md.owner_id, c->drm.md.num_regions, c->drm.md.num_users}, 3);
+    memcpy(md_buf+3, c->drm.md.rids, 64);
+    memcpy(tag_c, c->drm.mac_c, 32);
+    memcpy(md_buf+67, c->drm.md.uids, 64);
+    memcpy(tag_md, c->drm.mac_md, 32);
+    memcpy(md_buf+131, (BYTE[1]){c->drm.md.extra}, 1);
+    memcpy(md_buf+132, c->drm.md.iv, 16);
+    
+    //verify the authenticity of the ciphertext and store the mac tag for use in next mac
+    sha256_init(&ctx);
+    sha256_update(&ctx, c->drm.ct, ct_len);//TODO how do I figure out ct_len?
+    sha256_final(&ctx, mac_c);
+    if(memcmp(tag_c, mac_c, SHA256_BLOCK_SIZE)) {
+        return FALSE;
+    }
+
+    //verify the authenticity of the metadata
+    sha256_init(&ctx);
+    sha256_update(&ctx, md_buf, 148);
+    sha256_update(&ctx, mac_c, 32);
+    sha256_update(&ctx, KEY3, 32);
+    sha256_final(&ctx, mac_md);
+    if(memcmp(tag_md, mac_md, SHA256_BLOCK_SIZE)) {
+        return FALSE;
+    }
+    
+    //load verified metadata into s
+    memcpy((void*)&s.song_md, md_buf, 148);
+    return TRUE;
 }
 
 
@@ -433,7 +439,7 @@ int is_locked() {
         if (s.uid == s.song_md.owner_id) {
             locked = FALSE;
         } else {
-            for (int i = 0; i < NUM_PROVISIONED_USERS && locked; i++) {
+            for (int i = 0; (i < s.song_md.num_users) && locked; i++) {
                 if (s.uid == s.song_md.uids[i]) {
                     locked = FALSE;
                 }
@@ -466,42 +472,30 @@ int is_locked() {
 }
 
 
-// copy the local song metadata into buf in the correct format
-// returns the size of the metadata in buf (including the metadata size field)
-// song metadata should be loaded before call
-int gen_song_md(char *buf) {
-    buf[0] = ((5 + s.song_md.num_regions + s.song_md.num_users) / 2) * 2; // account for parity
-    buf[1] = s.song_md.owner_id;
-    buf[2] = s.song_md.num_regions;
-    buf[3] = s.song_md.num_users;
-    memcpy(buf + 4, s.song_md.rids, s.song_md.num_regions);
-    memcpy(buf + 4 + s.song_md.num_regions, s.song_md.uids, s.song_md.num_users);
-
-    return buf[0];
-}
-
-
-
 //////////////////////// COMMAND FUNCTIONS ////////////////////////
-
 
 // attempt to log in to the credentials in the shared buffer
 void login() {
+    char *name;
+    
     if (s.logged_in) {
         mb_printf("Already logged in. Please log out first.\r\n");
         memcpy((void*)c->username, s.username, USERNAME_SZ);
-        memcpy((void*)c->pin, s.pin, MAX_PIN_SZ);
     } else {
         for (int i = 0; i < NUM_PROVISIONED_USERS; i++) {
             // search for matching username
-            if (!strcmp((void*)c->username, USERNAMES[PROVISIONED_UIDS[i]])) {
+            for (int j = 0; j < NUM_USERS; j++) {
+                if (PROVISIONED_UIDS[i] == USER_IDS[j]) {
+                    name = USERNAMES[j];
+                }
+            }
+            if (!strcmp((void*)c->username, name)) {
                 // check if pin matches
                 if (!strcmp((void*)c->pin, PROVISIONED_PINS[i])) {
                     //update states
                     s.logged_in = 1;
                     c->login_status = 1;
                     memcpy(s.username, (void*)c->username, USERNAME_SZ);
-                    memcpy(s.pin, (void*)c->pin, MAX_PIN_SZ);
                     s.uid = PROVISIONED_UIDS[i];
                     mb_printf("Logged in for user '%s'\r\n", c->username);
                     return;
@@ -536,7 +530,7 @@ void login() {
 
 // attempt to log out
 void logout() {
-    if (c->login_status) {
+    if (s.logged_in) {
         mb_printf("Logging out...\r\n");
         s.logged_in = 0;
         c->login_status = 0;
@@ -551,15 +545,27 @@ void logout() {
 
 // handles a request to query the player's metadata
 void query_player() {
+    char *name;
+    
     c->query.num_regions = NUM_PROVISIONED_REGIONS;
     c->query.num_users = NUM_PROVISIONED_USERS;
 
     for (int i = 0; i < NUM_PROVISIONED_REGIONS; i++) {
+        for (int j = 0; j < NUM_REGIONS; j++) {
+            if (PROVISIONED_RIDS[i] == REGION_IDS[j]) {
+                name = REGION_NAMES[j];
+            }
+        }
         strcpy((char *)q_region_lookup(c->query, i), REGION_NAMES[PROVISIONED_RIDS[i]]);
     }
 
     for (int i = 0; i < NUM_PROVISIONED_USERS; i++) {
-        strcpy((char *)q_user_lookup(c->query, i), USERNAMES[i]);
+        for (int j = 0; j < NUM_USERS; j++) {
+            if (PROVISIONED_UIDS[i] == USER_IDS[j]) {
+                name = USERNAMES[j];
+            }
+        }
+        strcpy((char *)q_user_lookup(c->query, i), name);
     }
 
     mb_printf("Queried player (%d regions, %d users)\r\n", c->query.num_regions, c->query.num_users);
@@ -598,7 +604,7 @@ void query_song() {
 
 
 // add a user to the song's list of users
-void share_song() {
+void share_song() {//TODO finish
     int new_md_len, shift;
     char new_md[256], uid;
 
@@ -606,46 +612,57 @@ void share_song() {
     load_song_md();
     if (!s.logged_in) {
         mb_printf("No user is logged in. Cannot share song\r\n");
-        c->song.wav_size = 0;
+        c->wav.wav_size = 0;//TODO change how this message is communicated
         return;
     } else if (s.uid != s.song_md.owner_id) {
         mb_printf("User '%s' is not song's owner. Cannot share song\r\n", s.username);
-        c->song.wav_size = 0;
+        c->wav.wav_size = 0;
         return;
     } else if (!username_to_uid((char *)c->username, &uid, TRUE)) {
         mb_printf("Username not found\r\n");
-        c->song.wav_size = 0;
+        c->wav.wav_size = 0;
         return;
     }
 
     // generate new song metadata
     s.song_md.uids[s.song_md.num_users++] = uid;
-    new_md_len = gen_song_md(new_md);
+    
+    // copy the local song metadata into new_md in the correct format (TODO change to match new formt)
+    new_md[0] = ((5 + s.song_md.num_regions + s.song_md.num_users) / 2) * 2; // account for parity
+    new_md[1] = s.song_md.owner_id;
+    new_md[2] = s.song_md.num_regions;
+    new_md[3] = s.song_md.num_users;
+    memcpy(new_md + 4, s.song_md.rids, s.song_md.num_regions);
+    memcpy(new_md + 4 + s.song_md.num_regions, s.song_md.uids, s.song_md.num_users);
+    new_md_len = new_md[0]; //size of metadata (including metadata size field)
+    
     shift = new_md_len - s.song_md.md_size;
 
-    // shift over song and add new metadata
-    if (shift) {
-        memmove((void *)get_drm_song(c->song) + shift, (void *)get_drm_song(c->song), c->song.wav_size);
-    }
-    memcpy((void *)&c->song.md, new_md, new_md_len);
+    // shift over song and add new metadata (TODO: remove; no longer dynamic)
+    //if (shift) {
+    //    memmove((void *)get_drm_song(c->song) + shift, (void *)get_drm_song(c->song), c->song.wav_size);
+    //}
+    memcpy((void *)&c->drm.md, new_md, new_md_len);
 
-    // update file size
-    c->song.file_size += shift;
-    c->song.wav_size  += shift;
+    // update file size (TODO: remove; no longer dynamic and metadata not part of WAV)
+    //c->song.file_size += shift;
+    //c->song.wav_size  += shift;
 
     mb_printf("Shared song with '%s'\r\n", c->username);
 }
 
 
 // plays a song and looks for play-time commands
-void play_song() {
+void play_song() {//TODO finish
     u32 counter = 0, rem, cp_num, cp_xfil_cnt, offset, dma_cnt, length, *fifo_fill;
 
     mb_printf("Reading Audio File...");
     load_song_md();
+    
+    //decrypt here, probably
 
     // get WAV length
-    length = c->song.wav_size;
+    length = c->wav.wav_size;//this must come after decryption
     mb_printf("Song length = %dB", length);
 
     // truncate song if locked
@@ -696,7 +713,7 @@ void play_song() {
 
         // do first mem cpy here into DMA BRAM
         Xil_MemCpy((void *)(XPAR_MB_DMA_AXI_BRAM_CTRL_0_S_AXI_BASEADDR + offset),
-                   (void *)(get_drm_song(c->song) + length - rem),
+                   (void *)(c->wav.buf + length - rem),
                    (u32)(cp_num));
 
         cp_xfil_cnt = cp_num;
@@ -723,27 +740,27 @@ void play_song() {
 
 
 // removes DRM data from song for digital out
-void digital_out() {
-    // remove metadata size from file and chunk sizes
-    c->song.file_size -= c->song.md.md_size;
-    c->song.wav_size -= c->song.md.md_size;
+void digital_out() {//TODO finish
+    // remove metadata size from file and chunk sizes (TODO: replace with actual decryption)
+    //c->song.file_size -= c->song.md.md_size;
+    //c->song.wav_size -= c->song.md.md_size;
 
-    if (is_locked() && PREVIEW_SZ < c->song.wav_size) {
+    if (is_locked() && PREVIEW_SZ < c->wav.wav_size) {//TODO how to decrypt only a preview
         mb_printf("Only playing 30 seconds");
-        c->song.file_size -= c->song.wav_size - PREVIEW_SZ;
-        c->song.wav_size = PREVIEW_SZ;
+        c->wav.file_size -= c->wav.wav_size - PREVIEW_SZ;
+        c->wav.wav_size = PREVIEW_SZ;
     }
 
     // move WAV file up in buffer, skipping metadata
-    mb_printf(MB_PROMPT "Dumping song (%dB)...", c->song.wav_size);
-    memmove((void *)&c->song.md, (void *)get_drm_song(c->song), c->song.wav_size);
+    mb_printf(MB_PROMPT "Dumping song (%dB)...", c->wav.wav_size);
+    //memmove((void *)&c->song.md, (void *)get_drm_song(c->song), c->song.wav_size);
+    //^TODO: replace with actual decryption
 
     mb_printf("Song dump finished\r\n");
 }
 
 
 //////////////////////// MAIN ////////////////////////
-
 
 int main() {
     u32 status;
@@ -802,18 +819,14 @@ int main() {
                 query_song();
                 break;
             case SHARE:
-                mb_printf("SHA-256 tests: %s\r\n", sha256_test() ? "SUCCEEDED" : "FAILED");
-		//share_song();
+                share_song();
                 break;
             case PLAY:
                 play_song();
                 mb_printf("Done Playing Song\r\n");
                 break;
             case DIGITAL_OUT:
-		for(int iteratorr=0; iteratorr<16; iteratorr++) {
-		    mb_printf("Speck tests: 0x%x", speck_test(iteratorr));
-		}
-                //digital_out();
+                digital_out();
                 break;
             default:
                 break;
