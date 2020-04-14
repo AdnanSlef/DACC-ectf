@@ -148,7 +148,7 @@ void query_player() {
 // queries the DRM about a song
 void query_song(char *song_name) {
     // load the song into the shared buffer
-    if (!load_file(song_name, (void*)&c->song)) {
+    if (!load_file(song_name, (void*)&c->drm)) {
         mp_printf("Failed to load song!\r\n");
         return;
     }
@@ -192,7 +192,7 @@ void share_song(char *song_name, char *username) {
     }
 
     // load the song into the shared buffer
-    if (!load_file(song_name, (void*)&c->song)) {
+    if (!load_file(song_name, (void*)&c->drm)) {
         mp_printf("Failed to load song!\r\n");
         return;
     }
@@ -205,7 +205,7 @@ void share_song(char *song_name, char *username) {
     while (c->drm_state == WORKING) continue; // wait for DRM to share song
 
     // request was rejected if WAV length is 0
-    length = c->song.wav_size;
+    length = c->wav.wav_size;
     if (length == 0) {
         mp_printf("Share rejected\r\n");
         return;
@@ -221,7 +221,7 @@ void share_song(char *song_name, char *username) {
     // write song dump to file
     mp_printf("Writing song to file '%s' (%dB)\r\n", song_name, length);
     while (written < length) {
-        wrote = write(fd, (char *)&c->song + written, length - written);
+        wrote = write(fd, (char *)&c->wav + written, length - written);
         if (wrote == -1) {
             mp_printf("Error in writing file! Error = %d\r\n", errno);
             return;
@@ -238,7 +238,7 @@ int play_song(char *song_name) {
     char usr_cmd[USR_CMD_SZ + 1], *cmd = NULL, *arg1 = NULL, *arg2 = NULL;
 
     // load song into shared buffer
-    if (!load_file(song_name, (void*)&c->song)) {
+    if (!load_file(song_name, (void*)&c->drm)) {
         mp_printf("Failed to load song!\r\n");
         return 0;
     }
@@ -307,7 +307,7 @@ void digital_out(char *song_name) {
     char fname[64];
 
     // load file into shared buffer
-    if (!load_file(song_name, (void*)&c->song)) {
+    if (!load_file(song_name, (void*)&c->drm)) {
         mp_printf("Failed to load song!\r\n");
         return;
     }
@@ -318,7 +318,7 @@ void digital_out(char *song_name) {
     while (c->drm_state == WORKING) continue; // wait for DRM to dump file
 
     // open digital output file
-    int written = 0, wrote, length = c->song.file_size + 8;
+    int written = 0, wrote, length = c->wav.file_size + 8;
     sprintf(fname, "%s.dout", song_name);
     int fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC);
     if (fd == -1){
@@ -329,7 +329,7 @@ void digital_out(char *song_name) {
     // write song dump to file
     mp_printf("Writing song to file '%s' (%dB)\r\n", fname, length);
     while (written < length) {
-        wrote = write(fd, (char *)&c->song + written, length - written);
+        wrote = write(fd, (char *)&c->wav + written, length - written);
         if (wrote == -1) {
             mp_printf("Error in writing file! Error = %d \r\n", errno);
             return;
