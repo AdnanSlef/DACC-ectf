@@ -204,9 +204,8 @@ void share_song(char *song_name, char *username) {
     while (c->drm_state == STOPPED) continue; // wait for DRM to start working
     while (c->drm_state == WORKING) continue; // wait for DRM to share song
 
-    // request was rejected if WAV length is 0
-    length = c->wav.wav_size;
-    if (length == 0) {
+    // request was rejected if region count is 99
+    if (c->drm.md.num_regions==99) {
         mp_printf("Share rejected\r\n");
         return;
     }
@@ -219,9 +218,10 @@ void share_song(char *song_name, char *username) {
     }
 
     // write song dump to file
+    length = MAX_SONG_SIZE + MD_SIZE;
     mp_printf("Writing song to file '%s' (%dB)\r\n", song_name, length);
     while (written < length) {
-        wrote = write(fd, (char *)&c->wav + written, length - written);
+        wrote = write(fd, (char *)&c->drm + written, length - written);
         if (wrote == -1) {
             mp_printf("Error in writing file! Error = %d\r\n", errno);
             return;
