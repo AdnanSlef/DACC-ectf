@@ -16,9 +16,9 @@ def unprotect(infile, outfile, key1):
     with open(os.path.abspath(infile),'rb') as protected:
         contents = protected.read()
     
-    extra = contents[163]
-    iv = contents[164:180]
-    ciphertext = contents[212:]
+    extra = contents[131]
+    iv = contents[132:148]
+    ciphertext = contents[180:]
     
     cipher = Cipher(int(key1,16),int.from_bytes(iv,'big'))
 
