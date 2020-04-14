@@ -23,12 +23,13 @@
 #define mb_printf(...) xil_printf(MB_PROMPT __VA_ARGS__)
 
 // protocol constants
-#define MAX_REGIONS 64
+#define MAX_REGIONS 32
 #define REGION_NAME_SZ 64
 #define MAX_USERS 64
-#define USERNAME_SZ 64
+#define USERNAME_SZ 16
 #define MAX_PIN_SZ 64
 #define MAX_SONG_SZ (1<<25)
+#define MD_SIZE 216
 
 
 // LED colors and controller
@@ -62,6 +63,7 @@ typedef struct __attribute__((__packed__)) {
     char uids[MAX_USERS];
     char extra;
     char iv[16];
+    int ct_len;
 } drm_md;
 
 
@@ -81,6 +83,7 @@ typedef struct __attribute__((__packed__)) {
     char mac_md[32];
     drm_md md;
     char mac_c[32];
+    char mac_ct_len[32];
     char ct[];
 } drm;
 
@@ -116,6 +119,7 @@ typedef struct {
     u8 uids[MAX_USERS];
     u8 extra;
     u8 iv[16];
+    int ct_len;
 } song_md;
 
 
@@ -124,6 +128,7 @@ typedef struct {
     char logged_in;             // whether or not a user is logged on
     u8 uid;                     // logged on user id
     char username[USERNAME_SZ]; // logged on username
+    u8 song_id[32];             // an identifier for the current song
     song_md song_md;            // current song metadata
 } internal_state;
 
