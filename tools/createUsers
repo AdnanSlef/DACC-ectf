@@ -14,7 +14,8 @@ def gen_keys():
     key1a = secrets.token_hex(KEYSIZE // 16)
     key2a = secrets.token_hex(KEYSIZE // 16)
     key3a = secrets.token_hex(KEYSIZE // 16)
-    return {'key1a':key1a,'key2a':key2a,'key3a':key3a}
+    key4a = secrets.token_hex(KEYSIZE // 16)
+    return {'key1a':key1a,'key2a':key2a,'key3a':key3a,'key4a':key4a}
 
 def main(user_list, outfile):
     """writes user secrets to json file
