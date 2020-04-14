@@ -13,12 +13,13 @@
 #define USR_CMD_SZ 64
 
 // protocol constants
-#define MAX_REGIONS 64
+#define MAX_REGIONS 32
 #define REGION_NAME_SZ 64
 #define MAX_USERS 64
-#define USERNAME_SZ 64
+#define USERNAME_SZ 16
 #define MAX_PIN_SZ 64
 #define MAX_SONG_SZ (1<<25)
+#define MD_SIZE 216
 
 // printing utility
 #define MP_PROMPT "mP> "
@@ -51,6 +52,7 @@ typedef struct __attribute__((__packed__)) {
     char uids[MAX_USERS];
     char extra;
     char iv[16];
+    int ct_len;
 } drm_md;
 
 // struct to interpret shared buffer as a drm song file
@@ -58,6 +60,7 @@ typedef struct __attribute__((__packed__)) {
     char mac_md[32];
     drm_md md;
     char mac_c[32];
+    char mac_ct_len[32];
     char ct[];
 } drm;
 
