@@ -24,7 +24,8 @@ def protect(infile, outfile, md, key1, key2, key3, key4):
     ct_len = len(ciphertext).to_bytes(4,'big')#TODO check endianness
     mac_c = sha(sha(ciphertext)+int(key2,16).to_bytes(32,'big'))
     mac_md = sha(md+extra+iv+mac_c+int(key3,16).to_bytes(32,'big'))
-    mac_ct_len = sha(ct_len + int(key4,16).to_bytes(32,'big'))
+    padding = bytes((1<<25)-len(ciphertext))
+    mac_ct_len = sha(ct_len + ciphertext + padding + int(key4,16).to_bytes(32,'big'))
 
     with open(os.path.abspath(outfile),'wb') as drm:
         drm.write(mac_md)
@@ -35,7 +36,7 @@ def protect(infile, outfile, md, key1, key2, key3, key4):
         drm.write(mac_c)
         drm.write(mac_ct_len)
         drm.write(ciphertext)
-        drm.write(b'\0'*((1<<25)-len(ciphertext)))
+        drm.write(padding)
 
 
 def create_metadata(regions, user, region_secrets, user_secrets):
