@@ -29,7 +29,7 @@
 #define USERNAME_SZ 16
 #define MAX_PIN_SZ 64
 #define MAX_SONG_SZ (1<<25)
-#define MD_SIZE 216
+#define MD_SIZE 152
 
 
 // LED colors and controller
@@ -80,10 +80,8 @@ typedef struct __attribute__((__packed__)) {
 
 // struct to interpret shared buffer as a drm song file
 typedef struct __attribute__((__packed__)) {
-    char mac_md[32];
+    char mac[32];
     drm_md md;
-    char mac_c[32];
-    char mac_ct_len[32];
     char ct[];
 } drm;
 
@@ -128,7 +126,6 @@ typedef struct {
     char logged_in;             // whether or not a user is logged on
     u8 uid;                     // logged on user id
     char username[USERNAME_SZ]; // logged on username
-    u8 song_id[32];             // an identifier for the current song
     song_md song_md;            // current song metadata
 } internal_state;
 
