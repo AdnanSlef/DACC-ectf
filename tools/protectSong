@@ -12,7 +12,7 @@ import numpy as np
 from crypto import *  #crypto.py
 
 
-def protect(infile, outfile, md, key1, key2, key3, key4):
+def protect(infile, outfile, md, key1, key2):
     cipher = Cipher(int(key1,16))
     
     with open(os.path.abspath(infile),'rb') as song:
@@ -21,20 +21,16 @@ def protect(infile, outfile, md, key1, key2, key3, key4):
     ciphertext = cipher.encrypt(plaintext)
     extra = bytes([len(plaintext)%16])
     iv = cipher.iv.to_bytes(16,'big')
-    ct_len = len(ciphertext).to_bytes(4,'big')#TODO check endianness
-    mac_c = sha(sha(ciphertext)+int(key2,16).to_bytes(32,'big'))
-    mac_md = sha(md+extra+iv+mac_c+int(key3,16).to_bytes(32,'big'))
+    ct_len = len(ciphertext).to_bytes(4,'big')
+    mac = sha(md+extra+iv+ct_len+int(key2,16).to_bytes(32,'big'))
     padding = bytes((1<<25)-len(ciphertext))
-    mac_ct_len = sha(ct_len + ciphertext + padding + int(key4,16).to_bytes(32,'big'))
 
     with open(os.path.abspath(outfile),'wb') as drm:
-        drm.write(mac_md)
+        drm.write(mac)
         drm.write(md)
         drm.write(extra)
         drm.write(iv)
         drm.write(ct_len)
-        drm.write(mac_c)
-        drm.write(mac_ct_len)
         drm.write(ciphertext)
         drm.write(padding)
 
@@ -89,9 +85,9 @@ def main():
 
     keys_a = users_json['keys_a']
     keys_b = regions_json['keys_b']
-    key1, key2, key3, key4 = make_keys(keys_a, keys_b)
+    key1, key2 = make_keys(keys_a, keys_b)
     
-    protect(args.infile, args.outfile, metadata, key1, key2, key3, key4)
+    protect(args.infile, args.outfile, metadata, key1, key2)
 
 
 if __name__ == '__main__':
