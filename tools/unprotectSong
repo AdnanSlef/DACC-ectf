@@ -19,7 +19,7 @@ def unprotect(infile, outfile, key1):
     extra = contents[131]
     iv = contents[132:148]
     length = int.from_bytes(contents[148:152],'big')#TODO check endianness
-    ciphertext = contents[216:216+length]
+    ciphertext = contents[152:152+length]
     
     cipher = Cipher(int(key1,16),int.from_bytes(iv,'big'))
 
