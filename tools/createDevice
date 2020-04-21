@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 
 
 
-def main(key1, key2, key3, key4):
+def main(key1, key2):
     file_name = "device_secrets"
 
     # create device directory
@@ -64,13 +64,10 @@ const char *PROVISIONED_PINS[] = {{ {", ".join(['"' + user_secrets[u]['pin'] + '
                          
 const u64 KEY1[] = {{ {', '.join(['0x'+''.join(hex(w)[2:].zfill(2)for w in((int(key1,16)>>(64*x))&0xffffffffffffffff).to_bytes(8,'little'))for x in range(4)][::-1])} }};
 const u8  KEY2[] = {{ {', '.join(hex(b)for b in int(key2,16).to_bytes(32,'big'))} }};
-const u8  KEY3[] = {{ {', '.join(hex(b)for b in int(key3,16).to_bytes(32,'big'))} }};
-const u8  KEY4[] = {{ {', '.join(hex(b)for b in int(key4,16).to_bytes(32,'big'))} }};
-
                          
 #endif // SECRETS_H
 ''')
-    #key1 is formatted as u64[4] while keys 2, 3, and 4 are formatted as u8[32]
+    #key1 is formatted as u64[4] while key2 is formatted as u8[32]
 
 
 def make_keys(keys_a, keys_b):
@@ -105,7 +102,7 @@ if __name__ == '__main__':
 
     keys_a = users_json['keys_a']
     keys_b = regions_json['keys_b']
-    key1, key2, key3, key4 = make_keys(keys_a, keys_b)
+    key1, key2 = make_keys(keys_a, keys_b)
 
     print("generating device specific secrets")
-    main(key1, key2, key3, key4)
+    main(key1, key2)
