@@ -62,8 +62,8 @@ const u8 USER_IDS[] = {{ {", ".join([str(u['id']) for u in user_secrets.values()
 const u8 PROVISIONED_UIDS[] = {{ {", ".join(uids)} }};
 const char *PROVISIONED_PINS[] = {{ {", ".join(['"' + user_secrets[u]['pin'] + '"' for u in user_names])} }};
                          
-const u64 KEY1[] = {{ {', '.join(hex(b)for b in int(key1,16).to_bytes(32,'little'))} }};
-const u8  KEY2[] = {{ {', '.join(hex(b)for b in int(key2,16).to_bytes(32,'big'))} }};
+const u8 KEY1[] = {{ {', '.join(hex(b)for b in int(key1,16).to_bytes(32,'little'))} }};
+const u8 KEY2[] = {{ {', '.join(hex(b)for b in int(key2,16).to_bytes(32,'big'))} }};
                          
 #endif // SECRETS_H
 ''')
