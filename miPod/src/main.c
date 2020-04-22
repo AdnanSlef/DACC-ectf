@@ -158,6 +158,13 @@ void query_song(char *song_name) {
     while (c->drm_state == STOPPED) continue; // wait for DRM to start working
     while (c->drm_state == WORKING) continue; // wait for DRM to finish
 
+    //request was rejected if region count is 99
+    if (c->query.num_regions==99) {
+        mp_printf("Query rejected\r\n");
+        return;
+    }
+    
+    
     // print query results
 
     mp_printf("Regions: %s", q_region_lookup(c->query, 0));
