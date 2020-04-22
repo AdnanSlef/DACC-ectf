@@ -652,19 +652,42 @@ void share_song() {
 
 // plays a song and looks for play-time commands
 void play_song() {//TODO finish
-    u32 counter = 0, rem, cp_num, cp_xfil_cnt, offset, dma_cnt, length, *fifo_fill;
+    u32 counter = 0, rem, cp_num, cp_xfil_cnt, offset, dma_cnt, length, *fifo_fill, crypto_length, crypto_rem, pre_rounds, play_rounds;
+    u8 crypto_counter[16], plaintext[16], locked, len, iter;
 
     mb_printf("Reading Audio File...");
-    load_song_md();
+    if(!load_song_md()) {
+        mb_printf("Tampering detected. Song will not be played\r\n");
+        return;
+    }
+    locked = is_locked();
+    memcpy(crypto_counter, s.song_md.iv, 16);
+    crypto_length = s.song_md.ct_len;
+    if(crypto_length > PREVIEW_SZ && locked) crypto_length = PREVIEW_SZ+44;
+    crypto_rem = crypto_length;
     
-    //decrypt here, probably
+    
+    //begin decryption
+    pre_rounds = 5000;
+    while(crypto_rem>0 && pre_rounds>0) {
+        len = (crypto_rem<16)? crypto_rem:16;
+        speck_block_CTR(crypto_counter,&c->drm.ct[crypto_length-crypto_rem],plaintext);
+        memcpy( &((u8 *)(void *)&c->wav)[crypto_length-crypto_rem], plaintext, len);
+        
+        crypto_rem -= len;
+        pre_rounds--;
+        for(iter=15;iter>=0;iter--) {
+            crypto_counter[iter]++;
+            if(crypto_counter[iter]) break;
+        }
+    }
 
     // get WAV length
-    length = c->wav.wav_size;//this must come after decryption
+    length = c->wav.wav_size;
     mb_printf("Song length = %dB", length);
 
     // truncate song if locked
-    if (length > PREVIEW_SZ && is_locked()) {//TODO how to preview
+    if (length > PREVIEW_SZ && locked) {
         length = PREVIEW_SZ;
         mb_printf("Song is locked.  Playing only %ds = %dB\r\n",
                    PREVIEW_TIME_SEC, PREVIEW_SZ);
@@ -703,6 +726,23 @@ void play_song() {//TODO finish
             default:
                 break;
             }
+        }
+        
+        //decrypt some of the song
+        play_rounds = 16000;
+        while(crypto_rem>0 && play_rounds>0) {
+            len = (crypto_rem<16)? crypto_rem:16;
+            speck_block_CTR(crypto_counter,&c->drm.ct[crypto_length-crypto_rem],plaintext);
+            
+            memcpy( &((u8 *)(void *)&c->wav)[crypto_length-crypto_rem], plaintext, len);
+            
+            crypto_rem -= len;
+            play_rounds--;
+            for(iter=15; iter>=0; iter--) {
+                crypto_counter[iter]++;
+                if(crypto_counter[iter]) break;
+            }
+            
         }
 
         // calculate write size and offset
@@ -750,9 +790,9 @@ void digital_out() {//TODO finish
     length = s.song_md.ct_len;
     
     //truncate song if locked
-    if (length > PREVIEW_SZ && is_locked()) {
+    if (length > PREVIEW_SZ + 44 && is_locked()) {
         mb_printf("Song is locked. Only playing 30 seconds\r\n");
-        length = PREVIEW_SZ;
+        length = PREVIEW_SZ + 44;
     } else {
         mb_printf("Song is unlocked. Playing full song\r\n");
     }
