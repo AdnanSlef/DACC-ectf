@@ -805,8 +805,10 @@ void digital_out() {//TODO finish
         speck_block_CTR(counter, &c->drm.ct[length-rem], plaintext);
         len = (rem<16)? rem:16;
         
-        //memcpy(outputplace[length-rem], plaintext, len); //TODO where is outputplace?
+	//save decrypted wav file to shared buffer
+        memcpy( &((u8 *)(void *)&c->wav)[length-rem], plaintext, len);
         
+	//prepare for the next block
         rem -= len;
         for(i=15; i>=0; i--) {
             counter[i]++;
