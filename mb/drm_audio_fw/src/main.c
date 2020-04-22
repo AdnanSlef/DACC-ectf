@@ -284,10 +284,11 @@ u8 speck_test(int i) {
 u64 round_key[34];
 int key_rounded = 0;
 void speck_block_CTR(u8 true_counter[16], u8 true_ciphertext[16], u8 output[16]) {
-    u64 Pt[2], Ct[2];
+    u64 Pt[2], Ct[2], K[4];
     u8 ct[16];
     if(!key_rounded) {
-	    Speck128256KeySchedule(KEY1,round_key);
+        BytesToWords64(KEY1,K,32);
+	    Speck128256KeySchedule(K,round_key);
 	    key_rounded = 1;
     }
     
@@ -295,7 +296,7 @@ void speck_block_CTR(u8 true_counter[16], u8 true_ciphertext[16], u8 output[16])
     Speck128256Encrypt(Pt,Ct,round_key);
     Words64ToBytes(Ct,ct,2); //ct is now in reverse
     for(int i=0; i<16; i++) {
-    	output[i] = true_ciphertext[i] ^ ct[16-i];
+    	output[i] = true_ciphertext[i] ^ ct[i];
     }
 }
 
@@ -389,36 +390,26 @@ int username_to_uid(char *username, char *uid, int provisioned_only) {
 
 // loads the song metadata in the shared buffer into the local struct
 int load_song_md() {
-    BYTE md_buf[116];
-    int ct_len_claim;
-    BYTE ct_len_claim_buf[4] = {0,0,0,0};
+    BYTE md_buf[120];
     BYTE mac[SHA256_BLOCK_SIZE];
     BYTE tag[SHA256_BLOCK_SIZE];
     SHA256_CTX ctx;
     
     //load data from command channels into local buffers
     memcpy(tag, c->drm.mac, SHA256_BLOCK_SIZE);
-    memcpy(md_buf, (BYTE[3]){c->drm.md.owner_id, c->drm.md.num_regions, c->drm.md.num_users}, 3);
-    memcpy(md_buf+3, c->drm.md.rids, MAX_REGIONS);
-    memcpy(md_buf+35, c->drm.md.uids, MAX_USERS);
-    memcpy(md_buf+99, (BYTE[1]){c->drm.md.extra}, 1);
-    memcpy(md_buf+100, c->drm.md.iv, 16);
-    ct_len_claim = c->drm.md.ct_len;
-    memcpy(ct_len_claim_buf, &ct_len_claim, 4);
+    memcpy(md_buf, (void *)&c->drm.md, 120);
     
     //verify the authenticity of the metadata
     sha256_init(&ctx);
-    sha256_update(&ctx, md_buf, 116);
-    sha256_update(&ctx, ct_len_claim_buf, 4);
+    sha256_update(&ctx, md_buf, 120);
     sha256_update(&ctx, KEY2, 32);
     sha256_final(&ctx, mac);
     if(memcmp(tag, mac, SHA256_BLOCK_SIZE)) {
         return FALSE;
     }
     
-    //load verified metadata into s
-    memcpy((void*)&s.song_md, md_buf, 116);
-    s.song_md.ct_len = ct_len_claim;
+    //load verified metadata into internal state
+    memcpy((void*)&s.song_md, md_buf, 120);
     return TRUE;
 }
 
