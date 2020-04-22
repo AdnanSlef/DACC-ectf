@@ -281,18 +281,22 @@ u8 speck_test(int i) {
   return ct[i]; //manually check ct
 }
 
-void speck_block_CTR() {//TODO finish, add params?, breaks on final block
-    u64 Pt[2], Ct[2], rk[34];
+u64 round_key[34];
+int key_rounded = 0;
+void speck_block_CTR(u8 true_counter[16], u8 true_ciphertext[16], u8 output[16]) {
+    u64 Pt[2], Ct[2];
     u8 ct[16];
-    BytesToWords64(s.song_md.iv,Pt,16);//TODO how to increment counter
-    Speck128256KeySchedule(KEY1,rk);
+    if(!key_rounded) {
+	    Speck128256KeySchedule(KEY1,round_key);
+	    key_rounded = 1;
+    }
     
-    //this is ECB mode of iv; make it full CTR
-    Speck128256Encrypt(Pt,Ct,rk);
+    BytesToWords64(true_counter,Pt,16);
+    Speck128256Encrypt(Pt,Ct,round_key);
     Words64ToBytes(Ct,ct,2); //ct is now in reverse
-    //xor reverse ct with true plaintext (UP TO extra IF IT'S THE FINAL BLOCK)
-    
-    return;
+    for(int i=0; i<16; i++) {
+    	output[i] = true_ciphertext[i] ^ ct[16-i];
+    }
 }
 
 
@@ -574,7 +578,11 @@ void query_song() {
     char *name;
 
     // load song
-    load_song_md();
+    if(!load_song_md()) {
+	mb_printf("Tampering detected. Song cannot be queried\r\n");
+	c->query.num_regions = 99;//communicate failure
+	return;
+    }
     memset((void *)&c->query, 0, sizeof(query));
 
     c->query.num_regions = s.song_md.num_regions;
@@ -740,20 +748,40 @@ void play_song() {//TODO finish
 
 // removes DRM data from song for digital out
 void digital_out() {//TODO finish
-    // remove metadata size from file and chunk sizes (TODO: replace with actual decryption)
-    //c->song.file_size -= c->song.md.md_size;
-    //c->song.wav_size -= c->song.md.md_size;
-
-    if (is_locked() && PREVIEW_SZ < c->wav.wav_size) {//TODO how to decrypt only a preview
-        mb_printf("Only playing 30 seconds");
-        c->wav.file_size -= c->wav.wav_size - PREVIEW_SZ;
-        c->wav.wav_size = PREVIEW_SZ;
+    u32 rem, length;
+    u8 counter[16], len, plaintext[16], i;
+	
+    if(!load_song_md()) {
+	    mb_printf("Tampering detected. Song will not be played\r\n");
+	    return;
     }
-
-    // move WAV file up in buffer, skipping metadata
-    mb_printf(MB_PROMPT "Dumping song (%dB)...", c->wav.wav_size);
-    //memmove((void *)&c->song.md, (void *)get_drm_song(c->song), c->song.wav_size);
-    //^TODO: replace with actual decryption
+	
+    length = s.song_md.ct_len;
+    
+    //truncate song if locked
+    if (length > PREVIEW_SZ && is_locked()) {
+        mb_printf("Song is locked. Only playing 30 seconds\r\n");
+        length = PREVIEW_SZ;
+    } else {
+        mb_printf("Song is unlocked. Playing full song\r\n");
+    }
+    
+    rem = length;
+    
+    memcpy(counter, s.song_md.iv, 16);
+    
+    while(rem>0) {
+        speck_block_CTR(counter, &c->drm.ct[length-rem], plaintext);
+        len = (rem<16)? rem:16;
+        
+        //memcpy(outputplace[length-rem], plaintext, len); //TODO where is outputplace?
+        
+        rem -= len;
+        for(i=15; i>=0; i--) {
+            counter[i]++;
+            if(counter[i]) break;
+        }
+    }
 
     mb_printf("Song dump finished\r\n");
 }
