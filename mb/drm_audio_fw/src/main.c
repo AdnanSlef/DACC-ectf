@@ -296,7 +296,7 @@ void speck_block_CTR(u8 true_counter[16], u8 true_ciphertext[16], u8 output[16])
     Speck128256Encrypt(Pt,Ct,round_key);
     Words64ToBytes(Ct,ct,2); //ct is now in reverse
     for(int i=0; i<16; i++) {
-    	output[i] = true_ciphertext[i] ^ ct[i];
+    	output[i] = true_ciphertext[i] ^ ct[15-i];
     }
 }
 
@@ -668,7 +668,7 @@ void play_song() {//TODO finish
     
     
     //begin decryption
-    pre_rounds = 5000;
+    pre_rounds = 16000;
     while(crypto_rem>0 && pre_rounds>0) {
         len = (crypto_rem<16)? crypto_rem:16;
         speck_block_CTR(crypto_counter,&c->drm.ct[crypto_length-crypto_rem],plaintext);
@@ -676,7 +676,7 @@ void play_song() {//TODO finish
         
         crypto_rem -= len;
         pre_rounds--;
-        for(iter=15;iter>=0;iter--) {
+        for(iter=0; iter<16; iter++) {
             crypto_counter[iter]++;
             if(crypto_counter[iter]) break;
         }
@@ -738,7 +738,7 @@ void play_song() {//TODO finish
             
             crypto_rem -= len;
             play_rounds--;
-            for(iter=15; iter>=0; iter--) {
+            for(iter=0; iter<16; iter++) {
                 crypto_counter[iter]++;
                 if(crypto_counter[iter]) break;
             }
@@ -780,7 +780,7 @@ void play_song() {//TODO finish
 // removes DRM data from song for digital out
 void digital_out() {//TODO finish
     u32 rem, length;
-    u8 counter[16], len, plaintext[16], i;
+    u8 counter[16], len, plaintext[16], i, shorten = 0;
 	
     if(!load_song_md()) {
 	    mb_printf("Tampering detected. Song will not be played\r\n");
@@ -793,6 +793,7 @@ void digital_out() {//TODO finish
     if (length > PREVIEW_SZ + 44 && is_locked()) {
         mb_printf("Song is locked. Only playing 30 seconds\r\n");
         length = PREVIEW_SZ + 44;
+        shorten = 1;
     } else {
         mb_printf("Song is unlocked. Playing full song\r\n");
     }
@@ -810,10 +811,16 @@ void digital_out() {//TODO finish
         
 	//prepare for the next block
         rem -= len;
-        for(i=15; i>=0; i--) {
+        for(i=0; i<16; i++) {
             counter[i]++;
             if(counter[i]) break;
         }
+    }
+    
+    //shorten dout if necessary
+    if (shorten) {
+        c->wav.file_size = PREVIEW_SZ + 36;
+        c->wav.wav_size = PREVIEW_SZ;
     }
 
     mb_printf("Song dump finished\r\n");
