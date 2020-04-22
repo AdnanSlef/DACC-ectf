@@ -415,7 +415,7 @@ int load_song_md() {
 
 
 // checks if the song loaded into the shared buffer is locked for the current user
-int is_locked() {//TODO finish, why don't mb_printf calls have \r\n
+int is_locked() {
     int locked = TRUE;
 
     // check for authorized user
@@ -424,7 +424,7 @@ int is_locked() {//TODO finish, why don't mb_printf calls have \r\n
     } else {
         if(!load_song_md()) {
             mb_printf("Tampering detected. Song locked.");
-            return FALSE; //TODO does the caller need to know more than 1 bit?
+            return FALSE;
         };
 
         // check if user is authorized to play song
@@ -651,7 +651,7 @@ void share_song() {
 
 
 // plays a song and looks for play-time commands
-void play_song() {//TODO finish
+void play_song() {
     u32 counter = 0, rem, cp_num, cp_xfil_cnt, offset, dma_cnt, length, *fifo_fill, crypto_length, crypto_rem, pre_rounds, play_rounds;
     u8 crypto_counter[16], plaintext[16], locked, len, iter;
 
@@ -717,7 +717,7 @@ void play_song() {//TODO finish
                 set_playing();
                 break;
             case STOP:
-                mb_printf("Stopping playback...");//TODO why no \r\n
+                mb_printf("Stopping playback...");
                 return;
             case RESTART:
                 mb_printf("Restarting song... \r\n");
@@ -778,7 +778,7 @@ void play_song() {//TODO finish
 
 
 // removes DRM data from song for digital out
-void digital_out() {//TODO finish
+void digital_out() {
     u32 rem, length;
     u8 counter[16], len, plaintext[16], i, shorten = 0;
 	
