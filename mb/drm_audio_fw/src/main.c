@@ -389,59 +389,32 @@ int load_song_md() {
     int ct_len_claim;
     BYTE ct_len_claim_buf[4] = {0,0,0,0};
     BYTE mac[SHA256_BLOCK_SIZE];
-    BYTE tag_ct_len[SHA256_BLOCK_SIZE];
-    BYTE tag_c[SHA256_BLOCK_SIZE];
-    BYTE tag_md[SHA256_BLOCK_SIZE];
+    BYTE tag[SHA256_BLOCK_SIZE];
     SHA256_CTX ctx;
     
     //load data from command channels into local buffers
+    memcpy(tag, c->drm.mac, SHA256_BLOCK_SIZE);
     memcpy(md_buf, (BYTE[3]){c->drm.md.owner_id, c->drm.md.num_regions, c->drm.md.num_users}, 3);
-    memcpy(tag_ct_len, c->drm.mac_ct_len, SHA256_BLOCK_SIZE);
     memcpy(md_buf+3, c->drm.md.rids, MAX_REGIONS);
-    memcpy(tag_c, c->drm.mac_c, SHA256_BLOCK_SIZE);
     memcpy(md_buf+35, c->drm.md.uids, MAX_USERS);
-    memcpy(tag_md, c->drm.mac_md, SHA256_BLOCK_SIZE);
     memcpy(md_buf+99, (BYTE[1]){c->drm.md.extra}, 1);
-    ct_len_claim = c->drm.md.ct_len;
     memcpy(md_buf+100, c->drm.md.iv, 16);
-    memcpy(ct_len_claim_buf, &ct_len_claim, 4);//TODO test endianness
+    ct_len_claim = c->drm.md.ct_len;
+    memcpy(ct_len_claim_buf, &ct_len_claim, 4);
     
-    //verify the authenticity of the ciphertext length
-    sha256_init(&ctx);
-    sha256_update(&ctx, ct_len_claim_buf, 4);
-    sha256_update(&ctx, KEY4, 32);
-    sha256_update(&ctx, c->drm.ct, (1<<25)); //TODO break this into a loop
-    sha256_final(&ctx, mac);
-    if(memcmp(tag_ct_len, mac, SHA256_BLOCK_SIZE)) {
-        return FALSE;
-    }
-    s.song_md.ct_len = ct_len_claim;
-    
-    //verify the authenticity of the ciphertext and store the mac tag for use in next mac
-    sha256_init(&ctx);
-    sha256_update(&ctx, c->drm.ct, s.song_md.ct_len);
-    sha256_final(&ctx, mac);
-    sha256_init(&ctx);
-    sha256_update(&ctx, mac, SHA256_BLOCK_SIZE);
-    sha256_update(&ctx, KEY2, 32);
-    sha256_final(&ctx, mac);
-    if(memcmp(tag_c, mac, SHA256_BLOCK_SIZE)) {
-        return FALSE;
-    }
-    memcpy(s.song_id, mac, SHA256_BLOCK_SIZE);
-
     //verify the authenticity of the metadata
     sha256_init(&ctx);
     sha256_update(&ctx, md_buf, 116);
-    sha256_update(&ctx, s.song_id, SHA256_BLOCK_SIZE);
-    sha256_update(&ctx, KEY3, 32);
+    sha256_update(&ctx, ct_len_claim_buf, 4);
+    sha256_update(&ctx, KEY2, 32);
     sha256_final(&ctx, mac);
-    if(memcmp(tag_md, mac, SHA256_BLOCK_SIZE)) {
+    if(memcmp(tag, mac, SHA256_BLOCK_SIZE)) {
         return FALSE;
     }
     
     //load verified metadata into s
     memcpy((void*)&s.song_md, md_buf, 116);
+    s.song_md.ct_len = ct_len_claim;
     return TRUE;
 }
 
@@ -629,7 +602,7 @@ void query_song() {
 
 // add a user to the song's list of users
 void share_song() {
-    char md_buf[116], uid;
+    char md_buf[120], uid;
     SHA256_CTX ctx;
     
     // reject non-owner attempts to share
@@ -663,21 +636,16 @@ void share_song() {
 
     // generate new song metadata
     s.song_md.uids[s.song_md.num_users++] = uid;
-    c->drm.md.uids[s.song_md.num_users] = uid;
+    c->drm.md.uids[c->drm.md.num_users++] = uid;
     
     // load new song metadata into buffer
-    memcpy(md_buf, (BYTE[3]){s.song_md.owner_id, s.song_md.num_regions, s.song_md.num_users}, 3);
-    memcpy(md_buf+3, s.song_md.rids, MAX_REGIONS);
-    memcpy(md_buf+35, s.song_md.uids, MAX_USERS);
-    memcpy(md_buf+99, (BYTE[1]){s.song_md.extra}, 1);
-    memcpy(md_buf+100, s.song_md.iv, 16);
+    memcpy(md_buf, (void *)&s.song_md, 120);
     
     // sign new song metadata
     sha256_init(&ctx);
-    sha256_update(&ctx, md_buf, 116);
-    sha256_update(&ctx, s.song_id, SHA256_BLOCK_SIZE);
-    sha256_update(&ctx, KEY3, 32);
-    sha256_final(&ctx, c->drm.mac_md);
+    sha256_update(&ctx, md_buf, 120);
+    sha256_update(&ctx, KEY2, 32);
+    sha256_final(&ctx, c->drm.mac);
     
     mb_printf("Shared song with '%s'\r\n", c->username);
 }
