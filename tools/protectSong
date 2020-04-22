@@ -21,7 +21,7 @@ def protect(infile, outfile, md, key1, key2):
     ciphertext = cipher.encrypt(plaintext)
     extra = bytes([len(plaintext)%16])
     iv = cipher.iv.to_bytes(16,'big')
-    ct_len = len(ciphertext).to_bytes(4,'big')
+    ct_len = len(ciphertext).to_bytes(4,'little')
     mac = sha(md+extra+iv+ct_len+int(key2,16).to_bytes(32,'big'))
     padding = bytes((1<<25)-len(ciphertext))
 
