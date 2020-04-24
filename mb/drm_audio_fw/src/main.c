@@ -650,7 +650,7 @@ void play_song() {
     
     
     //begin decryption
-    rounds = 16000;
+    rounds = 4000;
     while(crypto_rem>0 && rounds>0) {
         len = (crypto_rem<16)? crypto_rem:16;
         speck_block_CTR(crypto_counter,&c->drm.ct[crypto_length-crypto_rem],plaintext);
@@ -711,7 +711,7 @@ void play_song() {
         }
         
         //decrypt a chunk of the song
-        rounds = 16000;
+        rounds = 1000;
         while(crypto_rem>0 && rounds>0) {
             len = (crypto_rem<16)? crypto_rem:16;
             speck_block_CTR(crypto_counter,&c->drm.ct[crypto_length-crypto_rem],plaintext);
