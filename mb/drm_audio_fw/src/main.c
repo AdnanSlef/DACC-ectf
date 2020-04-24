@@ -396,7 +396,7 @@ int load_song_md() {
     SHA256_CTX ctx;
     
     //load data from command channels into local buffers
-    memcpy(tag, c->drm.mac, SHA256_BLOCK_SIZE);
+    memcpy(tag, (void *)&c->drm.mac, SHA256_BLOCK_SIZE);
     memcpy(md_buf, (void *)&c->drm.md, 120);
     
     //verify the authenticity of the metadata
@@ -652,7 +652,7 @@ void share_song() {
 
 // plays a song and looks for play-time commands
 void play_song() {
-    u32 counter = 0, rem, cp_num, cp_xfil_cnt, offset, dma_cnt, length, *fifo_fill, crypto_length, crypto_rem, pre_rounds, play_rounds;
+    u32 counter = 0, rem, cp_num, cp_xfil_cnt, offset, dma_cnt, length, *fifo_fill, crypto_length, crypto_rem, rounds;
     u8 crypto_counter[16], plaintext[16], locked, len, iter;
 
     mb_printf("Reading Audio File...");
@@ -668,14 +668,14 @@ void play_song() {
     
     
     //begin decryption
-    pre_rounds = 16000;
-    while(crypto_rem>0 && pre_rounds>0) {
+    rounds = 16000;
+    while(crypto_rem>0 && rounds>0) {
         len = (crypto_rem<16)? crypto_rem:16;
         speck_block_CTR(crypto_counter,&c->drm.ct[crypto_length-crypto_rem],plaintext);
         memcpy( &((u8 *)(void *)&c->wav)[crypto_length-crypto_rem], plaintext, len);
         
         crypto_rem -= len;
-        pre_rounds--;
+        rounds--;
         for(iter=0; iter<16; iter++) {
             crypto_counter[iter]++;
             if(crypto_counter[iter]) break;
@@ -728,16 +728,16 @@ void play_song() {
             }
         }
         
-        //decrypt some of the song
-        play_rounds = 16000;
-        while(crypto_rem>0 && play_rounds>0) {
+        //decrypt a chunk of the song
+        rounds = 16000;
+        while(crypto_rem>0 && rounds>0) {
             len = (crypto_rem<16)? crypto_rem:16;
             speck_block_CTR(crypto_counter,&c->drm.ct[crypto_length-crypto_rem],plaintext);
             
             memcpy( &((u8 *)(void *)&c->wav)[crypto_length-crypto_rem], plaintext, len);
             
             crypto_rem -= len;
-            play_rounds--;
+            rounds--;
             for(iter=0; iter<16; iter++) {
                 crypto_counter[iter]++;
                 if(crypto_counter[iter]) break;
